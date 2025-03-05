@@ -210,6 +210,20 @@ function Settings() {
         Application Settings
       </Typography>
       
+      {/* Display error message if there's an error */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+      
+      {/* Display loading indicator */}
+      {isLoading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+          <Typography>Loading application settings...</Typography>
+        </Box>
+      )}
+      
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
         <Button 
           variant="outlined" 

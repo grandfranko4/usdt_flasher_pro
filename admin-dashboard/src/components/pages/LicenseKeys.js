@@ -191,6 +191,20 @@ function LicenseKeys() {
 
   return (
     <Box>
+      {/* Display error message if there's an error */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+      
+      {/* Display loading indicator */}
+      {isLoading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+          <Typography>Loading license keys...</Typography>
+        </Box>
+      )}
+      
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4">
           License Keys Management

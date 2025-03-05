@@ -144,6 +144,20 @@ function ContactInfo() {
         Contact Information Management
       </Typography>
       
+      {/* Display error message if there's an error */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+      
+      {/* Display loading indicator */}
+      {isLoading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+          <Typography>Loading contact information...</Typography>
+        </Box>
+      )}
+      
       <Grid container spacing={3}>
         <Grid item xs={12} md={8}>
           <Paper sx={{ p: 3, backgroundColor: '#222222' }}>
