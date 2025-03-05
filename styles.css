@@ -223,7 +223,13 @@ body {
   gap: 15px;
 }
 
-.logout-btn {
+.footer-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.logout-btn, .refresh-btn {
   background-color: transparent;
   color: var(--text-color);
   border: 1px solid var(--primary-color);
@@ -232,11 +238,40 @@ body {
   font-size: 0.85rem;
   cursor: pointer;
   transition: all 0.2s;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.logout-btn:hover {
+.logout-btn:hover, .refresh-btn:hover {
   background-color: var(--primary-color);
   color: white;
+}
+
+.refresh-btn {
+  background-color: rgba(0, 230, 184, 0.1);
+}
+
+.refresh-icon {
+  margin-right: 5px;
+  font-size: 1rem;
+  display: inline-block;
+  animation: none;
+  transition: transform 0.3s ease;
+}
+
+.refresh-btn:hover .refresh-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Content Area */

@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
-const { validateLicenseKey, logFlashTransaction } = require('./database-service');
+const { validateLicenseKey, logFlashTransaction, getAppSettings, getContactInfo, forceRefresh } = require('./database-service');
 const constants = require('./constants');
 
 // Keep a global reference of the window object to prevent it from being garbage collected
@@ -77,6 +77,12 @@ ipcMain.on('app-request', (event, request) => {
     case 'getAppSettings':
       handleGetAppSettings(event, request);
       break;
+    case 'getContactInfo':
+      handleGetContactInfo(event, request);
+      break;
+    case 'forceRefresh':
+      handleForceRefresh(event, request);
+      break;
     default:
       event.reply('app-response', { 
         action: request.action,
@@ -146,19 +152,10 @@ function handleGetConstants(event, request) {
 }
 
 // Handle getting app settings
-function handleGetAppSettings(event, request) {
+async function handleGetAppSettings(event, request) {
   try {
-    // Mock app settings for now
-    const settings = {
-      defaultNetwork: 'TRC20 (Tron)',
-      demoMaxFlashAmount: 30,
-      liveMaxFlashAmount: 10000000,
-      defaultDelayDays: 0,
-      defaultDelayMinutes: 0,
-      walletAddress: 'TRx7NkPPwWaCYCYyB8r1E8NAYhFqrKQR4h',
-      depositAmount: 100,
-      transactionFee: '0.01 BTC'
-    };
+    // Get app settings from database service
+    const settings = await getAppSettings();
     
     event.reply('app-response', {
       action: 'getAppSettings',
@@ -171,6 +168,48 @@ function handleGetAppSettings(event, request) {
       action: 'getAppSettings',
       error: true,
       message: 'Error getting app settings. Please try again.'
+    });
+  }
+}
+
+// Handle getting contact info
+async function handleGetContactInfo(event, request) {
+  try {
+    // Get contact info from database service
+    const contactInfo = await getContactInfo();
+    
+    event.reply('app-response', {
+      action: 'getContactInfo',
+      contactInfo
+    });
+  } catch (error) {
+    console.error('Error getting contact info:', error);
+    
+    event.reply('app-response', {
+      action: 'getContactInfo',
+      error: true,
+      message: 'Error getting contact info. Please try again.'
+    });
+  }
+}
+
+// Handle force refresh
+async function handleForceRefresh(event, request) {
+  try {
+    // Force refresh data from API
+    const result = await forceRefresh();
+    
+    event.reply('app-response', {
+      action: 'forceRefresh',
+      ...result
+    });
+  } catch (error) {
+    console.error('Error refreshing data:', error);
+    
+    event.reply('app-response', {
+      action: 'forceRefresh',
+      success: false,
+      message: 'Error refreshing data. Please try again.'
     });
   }
 }

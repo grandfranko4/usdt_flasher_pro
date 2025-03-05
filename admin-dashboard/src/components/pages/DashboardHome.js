@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   Typography, 
@@ -10,7 +10,8 @@ import {
   List,
   ListItem,
   ListItemText,
-  Divider
+  Divider,
+  CircularProgress
 } from '@mui/material';
 import { 
   VpnKey as VpnKeyIcon,
@@ -18,43 +19,109 @@ import {
   Settings as SettingsIcon,
   TrendingUp as TrendingUpIcon
 } from '@mui/icons-material';
-
-const statsData = [
-  { 
-    title: 'Active Licenses', 
-    value: '156', 
-    icon: <VpnKeyIcon sx={{ fontSize: 40, color: '#00e6b8' }} />,
-    color: '#00e6b8'
-  },
-  { 
-    title: 'Total Users', 
-    value: '243', 
-    icon: <PeopleIcon sx={{ fontSize: 40, color: '#fbc531' }} />,
-    color: '#fbc531'
-  },
-  { 
-    title: 'Settings Changed', 
-    value: '12', 
-    icon: <SettingsIcon sx={{ fontSize: 40, color: '#7f8fa6' }} />,
-    color: '#7f8fa6'
-  },
-  { 
-    title: 'Flash Transactions', 
-    value: '1,892', 
-    icon: <TrendingUpIcon sx={{ fontSize: 40, color: '#4cd137' }} />,
-    color: '#4cd137'
-  }
-];
-
-const recentActivities = [
-  { action: 'License key created', user: 'Admin', time: '10 minutes ago' },
-  { action: 'Contact information updated', user: 'Admin', time: '1 hour ago' },
-  { action: 'New user registered', user: 'John Doe', time: '3 hours ago' },
-  { action: 'Settings updated', user: 'Admin', time: '5 hours ago' },
-  { action: 'License key activated', user: 'Jane Smith', time: '1 day ago' }
-];
+import { 
+  fetchLicenseKeys, 
+  fetchAppSettings, 
+  fetchFlashHistory 
+} from '../../services/database';
 
 function DashboardHome() {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [statsData, setStatsData] = useState([]);
+  const [recentActivities, setRecentActivities] = useState([]);
+  const [appVersion, setAppVersion] = useState('');
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch license keys
+        const licenseKeys = await fetchLicenseKeys();
+        const activeLicenses = licenseKeys.filter(key => key.status === 'active').length;
+        
+        // Fetch app settings
+        const settings = await fetchAppSettings();
+        setAppVersion(settings.appVersion || '4.8');
+        
+        // Fetch flash history (this might need to be adjusted based on your API)
+        const flashHistory = await fetchFlashHistory();
+        
+        // Set stats data
+        setStatsData([
+          { 
+            title: 'Active Licenses', 
+            value: activeLicenses.toString(), 
+            icon: <VpnKeyIcon sx={{ fontSize: 40, color: '#00e6b8' }} />,
+            color: '#00e6b8'
+          },
+          { 
+            title: 'Total Users', 
+            value: licenseKeys.length.toString(), 
+            icon: <PeopleIcon sx={{ fontSize: 40, color: '#fbc531' }} />,
+            color: '#fbc531'
+          },
+          { 
+            title: 'Settings Changed', 
+            value: '12', // This could be fetched from a settings history endpoint if available
+            icon: <SettingsIcon sx={{ fontSize: 40, color: '#7f8fa6' }} />,
+            color: '#7f8fa6'
+          },
+          { 
+            title: 'Flash Transactions', 
+            value: Array.isArray(flashHistory) ? flashHistory.length.toString() : '0', 
+            icon: <TrendingUpIcon sx={{ fontSize: 40, color: '#4cd137' }} />,
+            color: '#4cd137'
+          }
+        ]);
+        
+        // Create recent activities from the data
+        // This is a simplified example - you would need to adapt this to your actual data structure
+        const activities = [];
+        
+        // Add license key activities
+        licenseKeys.slice(0, 3).forEach(key => {
+          activities.push({
+            action: `License key ${key.status}`,
+            user: key.user || 'User',
+            time: new Date(key.created_at).toLocaleString()
+          });
+        });
+        
+        // Add more activities if needed
+        setRecentActivities(activities.length > 0 ? activities : [
+          { action: 'No recent activities', user: '', time: '' }
+        ]);
+        
+        setLoading(false);
+      } catch (err) {
+        console.error('Error fetching dashboard data:', err);
+        setError('Failed to load dashboard data. Please try again later.');
+        setLoading(false);
+      }
+    };
+    
+    fetchDashboardData();
+  }, []);
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box>
+        <Typography variant="h6" color="error" gutterBottom>
+          {error}
+        </Typography>
+      </Box>
+    );
+  }
   return (
     <Box>
       <Typography variant="h4" gutterBottom>

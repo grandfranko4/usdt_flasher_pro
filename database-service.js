@@ -1,6 +1,26 @@
-// Import the mock database service
-// Note: We're importing directly from the file to avoid ES module issues
-const mockLicenseKeys = [
+const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
+const { app } = require('electron');
+
+// Cache data
+let licenseKeysCache = [];
+let contactInfoCache = null;
+let appSettingsCache = null;
+let lastFetchTime = {
+  licenseKeys: 0,
+  contactInfo: 0,
+  appSettings: 0
+};
+
+// Cache expiration time (in milliseconds)
+const CACHE_EXPIRATION = 5 * 60 * 1000; // 5 minutes
+
+// API base URL
+const API_BASE_URL = 'https://usdtflasherpro.netlify.app/.netlify/functions';
+
+// Fallback data (used when API is unavailable)
+const fallbackLicenseKeys = [
   {
     id: 1,
     key: 'USDT-ABCD-1234-EFGH-5678',
@@ -23,17 +43,17 @@ const mockLicenseKeys = [
   },
   {
     id: 3,
-    key: 'USDT-QRST-7890-UVWX-1234',
-    status: 'expired',
-    created_at: '2024-03-10T09:15:00.000Z',
-    expires_at: '2025-03-10T09:15:00.000Z',
-    user: 'test@gmail.com',
-    type: 'demo',
-    maxAmount: 30
+    key: 'YGMI-7B5L-GVUF-SL1Q',
+    status: 'active',
+    created_at: '2025-03-05T10:00:00.000Z',
+    expires_at: '2026-03-05T10:00:00.000Z',
+    user: 'live@gmail.com',
+    type: 'live',
+    maxAmount: 10000000
   }
 ];
 
-const mockContactInfo = {
+const fallbackContactInfo = {
   primaryPhone: '+447013216​28',
   secondaryPhone: '+14693510740',
   tertiaryPhone: '+91 7823232332',
@@ -43,7 +63,7 @@ const mockContactInfo = {
   discordServer: 'discord.gg/usdtflasherpro'
 };
 
-const mockAppSettings = {
+const fallbackAppSettings = {
   appVersion: '4.8',
   updateChannel: 'stable',
   autoUpdate: true,
@@ -68,37 +88,216 @@ const mockAppSettings = {
   // Success modal settings
   successTitle: 'Success',
   successMessage: 'The flash has been sent successfully',
-  transactionHash: '0000000000000000000000000000000000000000000000000000000000000000'
+  transactionHash: '000000000000000000000000000000000000'
 };
 
-// Mock database interface
-const mockDb = {
-  getLicenseKeys: () => [...mockLicenseKeys],
-  getLicenseKey: (id) => {
-    const key = mockLicenseKeys.find(k => k.id === id);
-    return key ? {...key} : null;
+// Get user data directory
+const getUserDataPath = () => {
+  const userDataPath = app ? app.getPath('userData') : path.join(__dirname, 'data');
+  
+  // Create directory if it doesn't exist
+  if (!fs.existsSync(userDataPath)) {
+    fs.mkdirSync(userDataPath, { recursive: true });
+  }
+  
+  return userDataPath;
+};
+
+// Cache file paths
+const getCacheFilePath = (type) => {
+  const userDataPath = getUserDataPath();
+  return path.join(userDataPath, `${type}-cache.json`);
+};
+
+// Load cache from disk
+const loadCacheFromDisk = (type) => {
+  try {
+    const filePath = getCacheFilePath(type);
+    
+    if (fs.existsSync(filePath)) {
+      const data = fs.readFileSync(filePath, 'utf8');
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error(`Error loading ${type} cache from disk:`, error);
+  }
+  
+  return null;
+};
+
+// Save cache to disk
+const saveCacheToDisk = (type, data) => {
+  try {
+    const filePath = getCacheFilePath(type);
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+  } catch (error) {
+    console.error(`Error saving ${type} cache to disk:`, error);
+  }
+};
+
+// Initialize cache from disk
+const initializeCache = () => {
+  // Load license keys cache
+  const licenseKeysFromDisk = loadCacheFromDisk('licenseKeys');
+  if (licenseKeysFromDisk) {
+    licenseKeysCache = licenseKeysFromDisk;
+  }
+  
+  // Load contact info cache
+  const contactInfoFromDisk = loadCacheFromDisk('contactInfo');
+  if (contactInfoFromDisk) {
+    contactInfoCache = contactInfoFromDisk;
+  }
+  
+  // Load app settings cache
+  const appSettingsFromDisk = loadCacheFromDisk('appSettings');
+  if (appSettingsFromDisk) {
+    appSettingsCache = appSettingsFromDisk;
+  }
+};
+
+// Initialize cache
+initializeCache();
+
+// Create axios instance with the correct base URL
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer dummy-token' // Add a dummy token for now
+  }
+});
+
+// API interface
+const api = {
+  // Fetch license keys from API
+  fetchLicenseKeys: async () => {
+    try {
+      console.log(`Fetching license keys from: ${API_BASE_URL}/license-keys`);
+      const response = await apiClient.get('/license-keys');
+      const licenseKeys = response.data;
+      
+      // Update cache
+      licenseKeysCache = licenseKeys;
+      lastFetchTime.licenseKeys = Date.now();
+      
+      // Save to disk
+      saveCacheToDisk('licenseKeys', licenseKeys);
+      
+      return licenseKeys;
+    } catch (error) {
+      console.error('Error fetching license keys from API:', error);
+      
+      // Return cache if available, otherwise fallback
+      return licenseKeysCache.length > 0 ? licenseKeysCache : fallbackLicenseKeys;
+    }
   },
-  createLicenseKey: (data) => {
-    const newId = mockLicenseKeys.length > 0 ? Math.max(...mockLicenseKeys.map(key => key.id)) + 1 : 1;
-    const newKey = { id: newId, ...data };
-    mockLicenseKeys.push(newKey);
-    return {...newKey};
+  
+  // Fetch contact info from API
+  fetchContactInfo: async () => {
+    try {
+      console.log(`Fetching contact info from: ${API_BASE_URL}/contact-info`);
+      const response = await apiClient.get('/contact-info');
+      const contactInfo = response.data;
+      
+      // Update cache
+      contactInfoCache = contactInfo;
+      lastFetchTime.contactInfo = Date.now();
+      
+      // Save to disk
+      saveCacheToDisk('contactInfo', contactInfo);
+      
+      return contactInfo;
+    } catch (error) {
+      console.error('Error fetching contact info from API:', error);
+      
+      // Return cache if available, otherwise fallback
+      return contactInfoCache || fallbackContactInfo;
+    }
   },
-  updateLicenseKey: (id, data) => {
-    const index = mockLicenseKeys.findIndex(k => k.id === id);
-    if (index === -1) return null;
-    mockLicenseKeys[index] = { ...mockLicenseKeys[index], ...data };
-    return {...mockLicenseKeys[index]};
+  
+  // Fetch app settings from API
+  fetchAppSettings: async () => {
+    try {
+      console.log(`Fetching app settings from: ${API_BASE_URL}/app-settings`);
+      const response = await apiClient.get('/app-settings');
+      const appSettings = response.data;
+      
+      // Update cache
+      appSettingsCache = appSettings;
+      lastFetchTime.appSettings = Date.now();
+      
+      // Save to disk
+      saveCacheToDisk('appSettings', appSettings);
+      
+      return appSettings;
+    } catch (error) {
+      console.error('Error fetching app settings from API:', error);
+      
+      // Return cache if available, otherwise fallback
+      return appSettingsCache || fallbackAppSettings;
+    }
+  }
+};
+
+// Start periodic sync
+const startPeriodicSync = () => {
+  // Sync every 5 minutes
+  setInterval(async () => {
+    try {
+      await api.fetchLicenseKeys();
+      await api.fetchContactInfo();
+      await api.fetchAppSettings();
+      console.log('Periodic sync completed at', new Date().toISOString());
+    } catch (error) {
+      console.error('Error during periodic sync:', error);
+    }
+  }, CACHE_EXPIRATION);
+};
+
+// Start periodic sync
+startPeriodicSync();
+
+// Database interface
+const db = {
+  getLicenseKeys: async () => {
+    // Check if cache is expired
+    if (Date.now() - lastFetchTime.licenseKeys > CACHE_EXPIRATION) {
+      return await api.fetchLicenseKeys();
+    }
+    
+    // Return cache if available, otherwise fetch from API
+    return licenseKeysCache.length > 0 ? licenseKeysCache : await api.fetchLicenseKeys();
   },
-  deleteLicenseKey: (id) => {
-    const index = mockLicenseKeys.findIndex(k => k.id === id);
-    if (index === -1) return null;
-    mockLicenseKeys.splice(index, 1);
-    return id;
+  
+  getLicenseKey: async (id) => {
+    const licenseKeys = await db.getLicenseKeys();
+    return licenseKeys.find(k => k.id === id) || null;
   },
-  getContactInfo: () => ({...mockContactInfo}),
-  getAppSettings: () => ({...mockAppSettings}),
+  
+  getContactInfo: async () => {
+    // Check if cache is expired
+    if (Date.now() - lastFetchTime.contactInfo > CACHE_EXPIRATION) {
+      return await api.fetchContactInfo();
+    }
+    
+    // Return cache if available, otherwise fetch from API
+    return contactInfoCache || await api.fetchContactInfo();
+  },
+  
+  getAppSettings: async () => {
+    // Check if cache is expired
+    if (Date.now() - lastFetchTime.appSettings > CACHE_EXPIRATION) {
+      return await api.fetchAppSettings();
+    }
+    
+    // Return cache if available, otherwise fetch from API
+    return appSettingsCache || await api.fetchAppSettings();
+  },
+  
   getFlashHistory: () => [],
+  
   authenticateUser: (email, password) => {
     if (email === 'admin@example.com' && password === 'password') {
       return {
@@ -115,14 +314,11 @@ const mockDb = {
   }
 };
 
-// For development, we'll use the mock database
-const USE_MOCK_DATABASE = true;
-
 // License Key functions
-function validateLicenseKey(key) {
+async function validateLicenseKey(key) {
   try {
-    // Get all license keys from the mock database
-    const licenseKeys = mockDb.getLicenseKeys();
+    // Get all license keys from the database
+    const licenseKeys = await db.getLicenseKeys();
     
     // Find the license key
     const licenseKey = licenseKeys.find(license => license.key === key);
@@ -142,11 +338,14 @@ function validateLicenseKey(key) {
       return { valid: false, message: 'License key has expired' };
     }
     
+    // Get app settings for max flash amounts
+    const appSettings = await db.getAppSettings();
+    
     // Determine license type and user
     const isDemo = licenseKey.type === 'demo' || key === 'USDT-ABCD-1234-EFGH-5678';
     const user = isDemo ? 'test@gmail.com' : 'live@gmail.com';
     const type = isDemo ? 'demo' : 'live';
-    const maxAmount = isDemo ? mockAppSettings.demoMaxFlashAmount : mockAppSettings.liveMaxFlashAmount;
+    const maxAmount = isDemo ? appSettings.demoMaxFlashAmount : appSettings.liveMaxFlashAmount;
     
     // Add license type and user to the response
     licenseKey.type = type;
@@ -155,24 +354,24 @@ function validateLicenseKey(key) {
     
     return { valid: true, licenseKey };
   } catch (error) {
-    console.error('Error validating license key with mock database:', error);
+    console.error('Error validating license key:', error);
     return { valid: false, message: 'Error validating license key. Please try again.' };
   }
 }
 
 // Contact Information functions
-function getContactInfo() {
+async function getContactInfo() {
   try {
-    return mockDb.getContactInfo();
+    return await db.getContactInfo();
   } catch (error) {
-    console.error('Error getting contact info from mock database:', error);
+    console.error('Error getting contact info:', error);
     throw error;
   }
 }
 
 function updateContactInfo(contactData) {
   try {
-    // This is a mock implementation
+    // This is not implemented for the desktop app
     return contactData;
   } catch (error) {
     console.error('Error updating contact info:', error);
@@ -182,8 +381,8 @@ function updateContactInfo(contactData) {
 
 function getContactInfoHistory(limit = 10) {
   try {
-    // This is a mock implementation
-    return mockDb.getContactInfoHistory ? mockDb.getContactInfoHistory(limit) : [];
+    // This is not implemented for the desktop app
+    return [];
   } catch (error) {
     console.error('Error getting contact info history:', error);
     return [];
@@ -191,18 +390,18 @@ function getContactInfoHistory(limit = 10) {
 }
 
 // App Settings functions
-function getAppSettings() {
+async function getAppSettings() {
   try {
-    return mockDb.getAppSettings();
+    return await db.getAppSettings();
   } catch (error) {
-    console.error('Error getting app settings from mock database:', error);
+    console.error('Error getting app settings:', error);
     throw error;
   }
 }
 
 function updateAppSettings(settingsData) {
   try {
-    // This is a mock implementation
+    // This is not implemented for the desktop app
     return settingsData;
   } catch (error) {
     console.error('Error updating app settings:', error);
@@ -213,7 +412,7 @@ function updateAppSettings(settingsData) {
 // Flash Transaction functions
 function logFlashTransaction(transactionData) {
   try {
-    // For mock database, we'll just return a success response
+    // For now, we'll just return a success response
     return { success: true, id: Date.now() };
   } catch (error) {
     console.error('Error logging flash transaction:', error);
@@ -223,9 +422,9 @@ function logFlashTransaction(transactionData) {
 
 function getFlashHistory(licenseKeyId) {
   try {
-    return mockDb.getFlashHistory ? mockDb.getFlashHistory(licenseKeyId) : [];
+    return [];
   } catch (error) {
-    console.error('Error getting flash history from mock database:', error);
+    console.error('Error getting flash history:', error);
     return [];
   }
 }
@@ -233,21 +432,31 @@ function getFlashHistory(licenseKeyId) {
 // User Authentication functions
 function authenticateUser(email, password) {
   try {
-    return mockDb.authenticateUser(email, password);
+    return db.authenticateUser(email, password);
   } catch (error) {
-    console.error('Error authenticating user with mock database:', error);
+    console.error('Error authenticating user:', error);
     return { success: false, message: 'Authentication error' };
+  }
+}
+
+// Force refresh data from API
+async function forceRefresh() {
+  try {
+    await api.fetchLicenseKeys();
+    await api.fetchContactInfo();
+    await api.fetchAppSettings();
+    return { success: true, message: 'Data refreshed successfully' };
+  } catch (error) {
+    console.error('Error refreshing data:', error);
+    return { success: false, message: 'Error refreshing data' };
   }
 }
 
 // Export functions
 module.exports = {
   validateLicenseKey,
-  getLicenseKeys: () => mockDb.getLicenseKeys(),
-  getLicenseKey: (id) => mockDb.getLicenseKey(id),
-  createLicenseKey: (data) => mockDb.createLicenseKey(data),
-  updateLicenseKey: (id, data) => mockDb.updateLicenseKey(id, data),
-  deleteLicenseKey: (id) => mockDb.deleteLicenseKey(id),
+  getLicenseKeys: async () => await db.getLicenseKeys(),
+  getLicenseKey: async (id) => await db.getLicenseKey(id),
   getContactInfo,
   updateContactInfo,
   getContactInfoHistory,
@@ -255,5 +464,6 @@ module.exports = {
   updateAppSettings,
   logFlashTransaction,
   getFlashHistory,
-  authenticateUser
+  authenticateUser,
+  forceRefresh
 };

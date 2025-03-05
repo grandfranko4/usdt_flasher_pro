@@ -55,6 +55,12 @@ function initializeApp() {
   if (logoutBtn) {
     logoutBtn.addEventListener('click', handleLogout);
   }
+  
+  // Refresh data functionality
+  const refreshDataBtn = document.getElementById('refresh-data-btn');
+  if (refreshDataBtn) {
+    refreshDataBtn.addEventListener('click', handleRefreshData);
+  }
 
   // Navigation functionality
   const navItems = document.querySelectorAll('.nav-item');
@@ -128,12 +134,39 @@ function initializeApp() {
     action: 'getAppSettings'
   });
   
-  // Set up listener for app settings response
+  // Get contact info
+  window.api.send('app-request', {
+    action: 'getContactInfo'
+  });
+  
+  // Set up listener for app responses
   window.api.receive('app-response', (response) => {
     if (response.action === 'getAppSettings') {
       appSettings = { ...appSettings, ...response.settings };
+      console.log('App settings updated:', appSettings);
+    } else if (response.action === 'getContactInfo') {
+      // Store contact info in global variable
+      window.contactInfo = response.contactInfo;
+      console.log('Contact info updated:', window.contactInfo);
+      
+      // Update contact info in UI if needed
+      updateContactInfoUI();
+    } else if (response.action === 'forceRefresh') {
+      if (response.success) {
+        showNotification('Success', 'Data refreshed successfully');
+      } else {
+        showNotification('Error', response.message || 'Failed to refresh data');
+      }
     }
   });
+  
+  // Set up periodic refresh (every 5 minutes)
+  setInterval(() => {
+    // Refresh data silently
+    window.api.send('app-request', {
+      action: 'forceRefresh'
+    });
+  }, 5 * 60 * 1000); // 5 minutes
 }
 
 // Setup dropdown functionality
@@ -1015,6 +1048,46 @@ function showNotification(title, message) {
   setTimeout(() => {
     notification.classList.remove('show');
   }, 5000);
+}
+
+// Handle refresh data
+function handleRefreshData() {
+  // Show loading notification
+  showNotification('Refreshing', 'Refreshing data from server...');
+  
+  // Send request to main process
+  window.api.send('app-request', {
+    action: 'forceRefresh'
+  });
+}
+
+// Update contact info in UI
+function updateContactInfoUI() {
+  // Check if contact info is available
+  if (!window.contactInfo) return;
+  
+  // Update contact info elements if they exist
+  const contactElements = {
+    'primary-phone': window.contactInfo.primaryPhone,
+    'secondary-phone': window.contactInfo.secondaryPhone,
+    'tertiary-phone': window.contactInfo.tertiaryPhone,
+    'contact-email': window.contactInfo.email,
+    'contact-website': window.contactInfo.website,
+    'telegram-username': window.contactInfo.telegramUsername,
+    'discord-server': window.contactInfo.discordServer
+  };
+  
+  // Update each element if it exists
+  for (const [id, value] of Object.entries(contactElements)) {
+    const element = document.getElementById(id);
+    if (element) {
+      if (element.tagName === 'INPUT') {
+        element.value = value;
+      } else {
+        element.textContent = value;
+      }
+    }
+  }
 }
 
 // Generate random transaction ID

@@ -29,6 +29,7 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "create-admin": "node --experimental-modules --es-module-specifier-resolution=node src/scripts/createAdminUser.js",
+    "init-db": "node --experimental-modules --es-module-specifier-resolution=node src/scripts/initializeDatabase.js",
     "deploy": "node scripts/deploy-to-netlify.js"
   },
   "eslintConfig": {
