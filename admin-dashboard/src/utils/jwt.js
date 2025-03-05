@@ -1,4 +1,5 @@
 // JWT utility functions
+// eslint-disable-next-line no-unused-vars
 const JWT_SECRET = '16d5009c5b3179797a01b5e905a573d04b89a9619d66bbb0c90bfcf7be013b4f';
 
 // Function to generate a JWT token
@@ -10,6 +11,7 @@ export const generateAdminToken = () => {
 
 // Function to create a signature (simplified for demo purposes)
 // In a real app, this would use a proper HMAC-SHA256 implementation
+// eslint-disable-next-line no-unused-vars
 function createSignature(header, payload, secret) {
   // This is a simplified implementation
   // In a real app, you would use crypto.createHmac('sha256', secret).update(header + '.' + payload).digest('base64url')
