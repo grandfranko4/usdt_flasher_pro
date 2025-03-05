@@ -15,7 +15,6 @@ import {
   Select,
   MenuItem,
   FormControl,
-  InputLabel,
   Slider,
   Accordion,
   AccordionSummary,
