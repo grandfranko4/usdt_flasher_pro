@@ -55,6 +55,17 @@ const apiRequest = async (endpoint, options = {}) => {
       
       const textResponse = await response.text();
       console.log(`API text response:`, textResponse);
+      
+      // Try to parse the text as JSON if it looks like JSON
+      if (textResponse.trim().startsWith('{') || textResponse.trim().startsWith('[')) {
+        try {
+          return JSON.parse(textResponse);
+        } catch (e) {
+          console.warn('Failed to parse text response as JSON:', e);
+          // Fall back to returning the text if parsing fails
+        }
+      }
+      
       return textResponse;
     }
   } catch (error) {
