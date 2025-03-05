@@ -43,3 +43,6 @@ Thumbs.db
 
 # Electron specific
 .electron-builder.env
+
+# Local Netlify folder
+.netlify

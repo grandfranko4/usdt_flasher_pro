@@ -1,5 +1,5 @@
 [build]
-  command = "npm run build"
+  command = "npm run build && cd functions && npm init -y && npm install @supabase/supabase-js jsonwebtoken faunadb"
   publish = "build"
   functions = "functions"
 
