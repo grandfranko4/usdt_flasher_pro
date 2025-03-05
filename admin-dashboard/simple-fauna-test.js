@@ -6,11 +6,17 @@ const q = faunadb.query;
 // The Fauna DB secret key
 const FAUNA_SECRET_KEY = 'fnAF5HLcMsAAQkqqX6yAJzPlbXsy753velbBs0Y0';
 
-console.log('Creating Fauna client with API version 10...');
+console.log('Creating Fauna client...');
 const client = new faunadb.Client({
-  secret: FAUNA_SECRET_KEY,
-  apiVersion: '10'
+  secret: FAUNA_SECRET_KEY
 });
+
+// Set the API version using the X-Fauna-Version header
+console.log('Setting X-Fauna-Version header to 10...');
+client.headers = {
+  ...client.headers,
+  'X-Fauna-Version': '10'
+};
 
 console.log('Attempting to ping Fauna DB...');
 client.query(q.Do(q.Now()))

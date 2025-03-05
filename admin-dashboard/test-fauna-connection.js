@@ -10,11 +10,16 @@ const q = faunadb.query;
 // The Fauna DB secret key
 const FAUNA_SECRET_KEY = 'fnAF5HLcMsAAQkqqX6yAJzPlbXsy753velbBs0Y0';
 
-// Initialize the FaunaDB client with the secret and API version
+// Initialize the FaunaDB client with the secret
 const client = new faunadb.Client({
-  secret: FAUNA_SECRET_KEY,
-  apiVersion: '10'
+  secret: FAUNA_SECRET_KEY
 });
+
+// Set the API version using the X-Fauna-Version header
+client.headers = {
+  ...client.headers,
+  'X-Fauna-Version': '10'
+};
 
 async function testConnection() {
   try {
