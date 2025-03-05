@@ -43,12 +43,14 @@ function Login() {
     }
     
       try {
+        console.log('Login component: Attempting login with email:', email);
         setError('');
         setLoading(true);
-        await login(email, password);
+        const user = await login(email, password);
+        console.log('Login component: Login successful, user:', user);
         navigate('/');
       } catch (error) {
-        console.error('Login error:', error);
+        console.error('Login component: Login error:', error);
         setError('Invalid email or password');
       } finally {
         setLoading(false);

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #1a1a1a;
+      color: #f5f6fa;
+    }
+    h1 {
+      color: #00e6b8;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    label {
+      display: block;
+      margin-bottom: 5px;
+    }
+    input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #353b48;
+      background-color: #222222;
+      color: #f5f6fa;
+      border-radius: 4px;
+    }
+    button {
+      background-color: #00e6b8;
+      color: #f5f6fa;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #00c9a0;
+    }
+    pre {
+      background-color: #222222;
+      padding: 15px;
+      border-radius: 4px;
+      overflow-x: auto;
+      margin-top: 20px;
+    }
+    .error {
+      color: #ff5252;
+      margin-top: 10px;
+    }
+    .success {
+      color: #00e676;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Login Test</h1>
+  
+  <div class="form-group">
+    <label for="email">Email:</label>
+    <input type="email" id="email" value="mikebtcretriever@gmail.com">
+  </div>
+  
+  <div class="form-group">
+    <label for="password">Password:</label>
+    <input type="password" id="password" value="Gateway@523">
+  </div>
+  
+  <button id="loginBtn">Login</button>
+  
+  <div id="status"></div>
+  
+  <h2>Response:</h2>
+  <pre id="response"></pre>
+  
+  <h2>Local Storage:</h2>
+  <pre id="localStorage"></pre>
+  
+  <script>
+    document.getElementById('loginBtn').addEventListener('click', async () => {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const statusEl = document.getElementById('status');
+      const responseEl = document.getElementById('response');
+      const localStorageEl = document.getElementById('localStorage');
+      
+      statusEl.textContent = 'Logging in...';
+      statusEl.className = '';
+      
+      try {
+        // Use the Netlify function endpoint
+        const response = await fetch('http://localhost:9999/.netlify/functions/auth', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email, password })
+        });
+        
+        const data = await response.json();
+        
+        // Display the response
+        responseEl.textContent = JSON.stringify(data, null, 2);
+        
+        if (data.success) {
+          statusEl.textContent = 'Login successful!';
+          statusEl.className = 'success';
+          
+          // Store user in local storage (like the real app does)
+          localStorage.setItem('user', JSON.stringify(data.user));
+          localStorage.setItem('token', data.token);
+          
+          // Display local storage
+          updateLocalStorageDisplay();
+        } else {
+          statusEl.textContent = `Login failed: ${data.message}`;
+          statusEl.className = 'error';
+        }
+      } catch (error) {
+        statusEl.textContent = `Error: ${error.message}`;
+        statusEl.className = 'error';
+        responseEl.textContent = error.toString();
+      }
+    });
+    
+    function updateLocalStorageDisplay() {
+      const localStorageEl = document.getElementById('localStorage');
+      const items = {
+        user: localStorage.getItem('user'),
+        token: localStorage.getItem('token')
+      };
+      
+      localStorageEl.textContent = JSON.stringify(items, null, 2);
+    }
+    
+    // Initial display of localStorage
+    updateLocalStorageDisplay();
+  </script>
+</body>
+</html>

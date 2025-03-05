@@ -40,20 +40,25 @@ export function AuthProvider({ children }) {
   // Login a user
   async function login(email, password) {
     try {
+      console.log('AuthContext: Attempting login with email:', email);
       const result = await authenticateUser(email, password);
+      console.log('AuthContext: Authentication result:', result);
       
       if (result.success) {
+        console.log('AuthContext: Login successful, storing user data');
         // Store user in local storage
         localStorage.setItem('user', JSON.stringify(result.user));
-        // Create a mock token for compatibility
-        localStorage.setItem('token', 'mock-token-for-development');
+        // Store the actual token from the response
+        localStorage.setItem('token', result.token);
         setCurrentUser(result.user);
         setUserRole(result.user.role);
         return result.user;
       } else {
+        console.error('AuthContext: Login failed:', result.message);
         throw new Error(result.message);
       }
     } catch (error) {
+      console.error('AuthContext: Login error:', error);
       throw error;
     }
   }

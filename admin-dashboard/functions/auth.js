@@ -43,6 +43,9 @@ exports.handler = async (event, context) => {
     try {
       const authData = await signIn(email, password);
       
+      // Debug log to see what's returned from Supabase
+      console.log('Supabase auth response:', JSON.stringify(authData, null, 2));
+      
       if (!authData || !authData.user) {
         return {
           statusCode: 401,

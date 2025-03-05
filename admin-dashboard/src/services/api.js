@@ -3,7 +3,7 @@
 // Base URL for API requests
 const baseURL = process.env.NODE_ENV === 'production' 
   ? '/.netlify/functions'
-  : 'http://localhost:8888/.netlify/functions';
+  : 'http://localhost:9999/.netlify/functions';
 
 // Helper function to handle API requests
 const apiRequest = async (endpoint, options = {}) => {
