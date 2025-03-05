@@ -1,5 +1,4 @@
-const { getByField } = require('./utils/fauna');
-const bcrypt = require('bcryptjs');
+const { signIn } = require('./utils/supabase');
 const jwt = require('jsonwebtoken');
 
 exports.handler = async (event, context) => {
@@ -40,56 +39,57 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Get user by email
-    const users = await getByField('users_by_email', email);
-
-    if (users.length === 0) {
-      return {
-        statusCode: 401,
-        headers,
-        body: JSON.stringify({ success: false, message: 'Invalid email or password' })
-      };
-    }
-
-    const user = users[0];
-
-    // Compare passwords
-    const isMatch = await bcrypt.compare(password, user.password);
-
-    if (!isMatch) {
-      return {
-        statusCode: 401,
-        headers,
-        body: JSON.stringify({ success: false, message: 'Invalid email or password' })
-      };
-    }
-
-    // Create JWT token
-    const token = jwt.sign(
-      {
-        id: user.id,
-        email: user.email,
-        role: user.role
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '1d' }
-    );
-
-    // Return user data and token
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({
-        success: true,
-        user: {
+    // Sign in with Supabase
+    try {
+      const authData = await signIn(email, password);
+      
+      if (!authData || !authData.user) {
+        return {
+          statusCode: 401,
+          headers,
+          body: JSON.stringify({ success: false, message: 'Invalid email or password' })
+        };
+      }
+      
+      const user = authData.user;
+      const userData = user.user_metadata || {};
+      
+      // Create JWT token for compatibility with existing frontend
+      const token = jwt.sign(
+        {
           id: user.id,
           email: user.email,
-          displayName: user.display_name,
-          role: user.role
+          role: userData.role || 'user'
         },
-        token
-      })
-    };
+        process.env.JWT_SECRET || 'your-jwt-secret',
+        { expiresIn: '1d' }
+      );
+      
+      // Return user data and token
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          success: true,
+          user: {
+            id: user.id,
+            email: user.email,
+            displayName: userData.display_name || user.email,
+            role: userData.role || 'user'
+          },
+          token,
+          supabaseToken: authData.session.access_token
+        })
+      };
+    } catch (error) {
+      console.error('Supabase authentication error:', error);
+      
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({ success: false, message: 'Invalid email or password' })
+      };
+    }
   } catch (error) {
     console.error('Authentication error:', error);
     

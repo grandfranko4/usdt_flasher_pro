@@ -1,4 +1,4 @@
-const { getAll, getLatest, create } = require('./utils/fauna');
+const { getAll, getLatest, create } = require('./utils/supabase');
 const jwt = require('jsonwebtoken');
 
 // Helper function to verify JWT token

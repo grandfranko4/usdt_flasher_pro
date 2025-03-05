@@ -1,4 +1,4 @@
-const { getAll, getById, create, update, remove } = require('./utils/fauna');
+const { getAll, getById, create, update, remove } = require('./utils/supabase');
 const jwt = require('jsonwebtoken');
 
 // Helper function to verify JWT token
