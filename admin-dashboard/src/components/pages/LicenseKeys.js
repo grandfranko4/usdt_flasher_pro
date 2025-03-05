@@ -41,8 +41,8 @@ import {
 
 function LicenseKeys() {
   const [licenseKeys, setLicenseKeys] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [newLicenseData, setNewLicenseData] = useState({
     user: '',
@@ -80,15 +80,15 @@ function LicenseKeys() {
   useEffect(() => {
     const loadLicenseKeys = async () => {
       try {
-        setLoading(true);
-        setFetchError(null);
+        setIsLoading(true);
+        setError(null);
         const keys = await fetchLicenseKeys();
         setLicenseKeys(keys);
       } catch (error) {
         console.error('Error fetching license keys:', error);
-        setFetchError('Failed to load license keys. Please try again.');
+        setError('Failed to load license keys. Please try again.');
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
@@ -106,7 +106,7 @@ function LicenseKeys() {
     }
 
     try {
-      setLoading(true);
+      setIsLoading(true);
       
       const today = new Date();
       const expiryDate = new Date(today);
@@ -139,13 +139,13 @@ function LicenseKeys() {
         severity: 'error'
       });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   const handleDeleteLicense = async (id) => {
     try {
-      setLoading(true);
+      setIsLoading(true);
       await removeLicenseKey(id);
       
       // Remove the deleted license from the state
@@ -164,7 +164,7 @@ function LicenseKeys() {
         severity: 'error'
       });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 

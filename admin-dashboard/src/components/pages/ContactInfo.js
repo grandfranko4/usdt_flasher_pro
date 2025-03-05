@@ -38,8 +38,9 @@ function ContactInfo() {
   });
   const [originalInfo, setOriginalInfo] = useState({});
   const [changeHistory, setChangeHistory] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState(null);
+  // State for tracking loading status and errors
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -58,8 +59,8 @@ function ContactInfo() {
   useEffect(() => {
     const loadContactInfo = async () => {
       try {
-        setLoading(true);
-        setFetchError(null);
+        setIsLoading(true);
+        setError(null);
         
         // Get contact info
         const info = await fetchContactInfo();
@@ -71,9 +72,9 @@ function ContactInfo() {
         setChangeHistory(history);
       } catch (error) {
         console.error('Error fetching contact info:', error);
-        setFetchError('Failed to load contact information. Please try again.');
+        setError('Failed to load contact information. Please try again.');
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
@@ -82,7 +83,7 @@ function ContactInfo() {
 
   const handleSave = async () => {
     try {
-      setLoading(true);
+      setIsLoading(true);
       
       // Update contact info in the database
       await saveContactInfo(contactInfo);
@@ -107,7 +108,7 @@ function ContactInfo() {
         severity: 'error'
       });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 

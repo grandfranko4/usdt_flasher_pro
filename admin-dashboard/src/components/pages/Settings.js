@@ -98,8 +98,8 @@ function Settings() {
     minuteOptions: '[]'
   });
   const [originalSettings, setOriginalSettings] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -132,8 +132,8 @@ function Settings() {
   useEffect(() => {
     const loadAppSettings = async () => {
       try {
-        setLoading(true);
-        setFetchError(null);
+        setIsLoading(true);
+        setError(null);
         
         // Get app settings
         const appSettings = await fetchAppSettings();
@@ -141,9 +141,9 @@ function Settings() {
         setOriginalSettings(appSettings);
       } catch (error) {
         console.error('Error fetching app settings:', error);
-        setFetchError('Failed to load application settings. Please try again.');
+        setError('Failed to load application settings. Please try again.');
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
@@ -152,7 +152,7 @@ function Settings() {
 
   const handleSave = async () => {
     try {
-      setLoading(true);
+      setIsLoading(true);
       
       // Update app settings in the database
       await saveAppSettings(settings);
@@ -173,7 +173,7 @@ function Settings() {
         severity: 'error'
       });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 

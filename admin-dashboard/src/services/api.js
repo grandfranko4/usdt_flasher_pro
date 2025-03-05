@@ -218,7 +218,8 @@ export const initializeDatabase = async (initKey) => {
   }
 };
 
-export default {
+// Create API object before exporting as default
+const apiService = {
   login,
   fetchLicenseKeys,
   fetchLicenseKey,
@@ -234,3 +235,6 @@ export default {
   generateLicenseKey,
   initializeDatabase
 };
+
+// Export the apiService object as default
+export default apiService;
