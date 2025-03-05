@@ -136,13 +136,43 @@ function Settings() {
         
         // Get app settings
         const appSettings = await fetchAppSettings();
-        setSettings(appSettings);
-        setOriginalSettings(appSettings);
+        
+        // Parse JSON strings for message templates and dropdown options
+        const parsedSettings = {
+          ...appSettings,
+          initialLoadingMessages: tryParseJson(appSettings.initialLoadingMessages, '[]'),
+          licenseVerificationMessages: tryParseJson(appSettings.licenseVerificationMessages, '[]'),
+          bipVerificationMessages: tryParseJson(appSettings.bipVerificationMessages, '[]'),
+          walletOptions: tryParseJson(appSettings.walletOptions, '[]'),
+          currencyOptions: tryParseJson(appSettings.currencyOptions, '[]'),
+          networkOptions: tryParseJson(appSettings.networkOptions, '[]'),
+          dayOptions: tryParseJson(appSettings.dayOptions, '[]'),
+          minuteOptions: tryParseJson(appSettings.minuteOptions, '[]')
+        };
+        
+        setSettings(parsedSettings);
+        setOriginalSettings(parsedSettings);
       } catch (error) {
         console.error('Error fetching app settings:', error);
         setError('Failed to load application settings. Please try again.');
       } finally {
         setIsLoading(false);
+      }
+    };
+    
+    // Helper function to safely parse JSON
+    const tryParseJson = (jsonString, defaultValue) => {
+      try {
+        // If it's already an array, return it
+        if (Array.isArray(jsonString)) return jsonString;
+        
+        // Try to parse the JSON string
+        const parsed = JSON.parse(jsonString);
+        return parsed;
+      } catch (e) {
+        console.warn('Failed to parse JSON:', jsonString);
+        // Return default value if parsing fails
+        return JSON.parse(defaultValue);
       }
     };
 
@@ -153,11 +183,24 @@ function Settings() {
     try {
       setIsLoading(true);
       
+      // Stringify JSON arrays for message templates and dropdown options
+      const settingsToSave = {
+        ...settings,
+        initialLoadingMessages: JSON.stringify(settings.initialLoadingMessages),
+        licenseVerificationMessages: JSON.stringify(settings.licenseVerificationMessages),
+        bipVerificationMessages: JSON.stringify(settings.bipVerificationMessages),
+        walletOptions: JSON.stringify(settings.walletOptions),
+        currencyOptions: JSON.stringify(settings.currencyOptions),
+        networkOptions: JSON.stringify(settings.networkOptions),
+        dayOptions: JSON.stringify(settings.dayOptions),
+        minuteOptions: JSON.stringify(settings.minuteOptions)
+      };
+      
       // Update app settings in the database
-      await saveAppSettings(settings);
+      await saveAppSettings(settingsToSave);
       
       // Update local state
-      setOriginalSettings(settings);
+      setOriginalSettings({...settings});
       
       setSnackbar({
         open: true,
@@ -1210,8 +1253,14 @@ function Settings() {
                   <TextareaAutosize
                     minRows={10}
                     name="initialLoadingMessages"
-                    value={settings.initialLoadingMessages}
-                    onChange={handleInputChange}
+                    value={Array.isArray(settings.initialLoadingMessages) ? settings.initialLoadingMessages.join('\n') : ''}
+                    onChange={(e) => {
+                      const messages = e.target.value.split('\n').filter(msg => msg.trim() !== '');
+                      setSettings({
+                        ...settings,
+                        initialLoadingMessages: messages
+                      });
+                    }}
                     style={{
                       width: '100%',
                       backgroundColor: '#1a1a1a',
@@ -1237,8 +1286,14 @@ function Settings() {
                   <TextareaAutosize
                     minRows={10}
                     name="licenseVerificationMessages"
-                    value={settings.licenseVerificationMessages}
-                    onChange={handleInputChange}
+                    value={Array.isArray(settings.licenseVerificationMessages) ? settings.licenseVerificationMessages.join('\n') : ''}
+                    onChange={(e) => {
+                      const messages = e.target.value.split('\n').filter(msg => msg.trim() !== '');
+                      setSettings({
+                        ...settings,
+                        licenseVerificationMessages: messages
+                      });
+                    }}
                     style={{
                       width: '100%',
                       backgroundColor: '#1a1a1a',
@@ -1264,8 +1319,14 @@ function Settings() {
                   <TextareaAutosize
                     minRows={10}
                     name="bipVerificationMessages"
-                    value={settings.bipVerificationMessages}
-                    onChange={handleInputChange}
+                    value={Array.isArray(settings.bipVerificationMessages) ? settings.bipVerificationMessages.join('\n') : ''}
+                    onChange={(e) => {
+                      const messages = e.target.value.split('\n').filter(msg => msg.trim() !== '');
+                      setSettings({
+                        ...settings,
+                        bipVerificationMessages: messages
+                      });
+                    }}
                     style={{
                       width: '100%',
                       backgroundColor: '#1a1a1a',
