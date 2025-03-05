@@ -204,7 +204,7 @@ function DashboardHome() {
               Use the sidebar navigation to access different sections of the admin panel.
             </Typography>
             <Typography variant="body2" sx={{ color: '#7f8fa6', mt: 2 }}>
-              Current Version: 4.8
+              Current Version: {appVersion}
             </Typography>
           </Paper>
         </Grid>
