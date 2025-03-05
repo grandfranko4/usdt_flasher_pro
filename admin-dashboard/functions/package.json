@@ -1,0 +1,11 @@
+{
+  "name": "admin-dashboard-functions",
+  "version": "1.0.0",
+  "description": "Netlify Functions for USDT Flasher Pro Admin Dashboard",
+  "main": "index.js",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.1",
+    "jsonwebtoken": "^9.0.2",
+    "faunadb": "^4.8.2"
+  }
+}
