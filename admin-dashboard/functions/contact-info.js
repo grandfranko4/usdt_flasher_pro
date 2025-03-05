@@ -1,0 +1,213 @@
+const { getAll, getLatest, create } = require('./utils/fauna');
+const jwt = require('jsonwebtoken');
+
+// Helper function to verify JWT token
+const verifyToken = (authHeader) => {
+  if (!authHeader) {
+    throw new Error('No authorization header provided');
+  }
+
+  const token = authHeader.split(' ')[1];
+  if (!token) {
+    throw new Error('No token provided');
+  }
+
+  try {
+    return jwt.verify(token, process.env.JWT_SECRET);
+  } catch (error) {
+    throw new Error('Invalid token');
+  }
+};
+
+exports.handler = async (event, context) => {
+  // Set CORS headers
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
+  };
+
+  // Handle preflight OPTIONS request
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
+  }
+
+  try {
+    // For GET requests without authentication (public endpoint)
+    if (event.httpMethod === 'GET' && event.path.endsWith('/contact-info')) {
+      const contactInfo = await getLatest('contact_info');
+      
+      if (!contactInfo) {
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ error: 'Contact information not found' })
+        };
+      }
+      
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          primaryPhone: contactInfo.primary_phone,
+          secondaryPhone: contactInfo.secondary_phone,
+          tertiaryPhone: contactInfo.tertiary_phone,
+          email: contactInfo.email,
+          website: contactInfo.website,
+          telegramUsername: contactInfo.telegram_username,
+          discordServer: contactInfo.discord_server
+        })
+      };
+    }
+
+    // Verify token for other requests
+    try {
+      const user = verifyToken(event.headers.authorization);
+      
+      // Check if user has admin role
+      if (user.role !== 'admin') {
+        return {
+          statusCode: 403,
+          headers,
+          body: JSON.stringify({ error: 'Forbidden' })
+        };
+      }
+    } catch (error) {
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({ error: error.message })
+      };
+    }
+
+    // Handle different HTTP methods
+    switch (event.httpMethod) {
+      case 'GET': {
+        // Get contact info history
+        if (event.path.endsWith('/history')) {
+          const history = await getAll('contact_info_history');
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify(history)
+          };
+        } else {
+          const contactInfo = await getLatest('contact_info');
+          
+          if (!contactInfo) {
+            return {
+              statusCode: 404,
+              headers,
+              body: JSON.stringify({ error: 'Contact information not found' })
+            };
+          }
+          
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+              primaryPhone: contactInfo.primary_phone,
+              secondaryPhone: contactInfo.secondary_phone,
+              tertiaryPhone: contactInfo.tertiary_phone,
+              email: contactInfo.email,
+              website: contactInfo.website,
+              telegramUsername: contactInfo.telegram_username,
+              discordServer: contactInfo.discord_server
+            })
+          };
+        }
+      }
+      
+      case 'POST': {
+        // Update contact info
+        const data = JSON.parse(event.body);
+        const user = verifyToken(event.headers.authorization);
+        
+        // Validate required fields
+        if (!data.primaryPhone || !data.secondaryPhone || !data.tertiaryPhone) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'Missing required fields' })
+          };
+        }
+        
+        // Get current contact info for history
+        const currentContactInfo = await getLatest('contact_info');
+        
+        // Create new contact info
+        const contactInfo = await create('contact_info', {
+          primary_phone: data.primaryPhone,
+          secondary_phone: data.secondaryPhone,
+          tertiary_phone: data.tertiaryPhone,
+          email: data.email || '',
+          website: data.website || '',
+          telegram_username: data.telegramUsername || '',
+          discord_server: data.discordServer || '',
+          updated_at: new Date().toISOString()
+        });
+        
+        // Add history entries for changed fields
+        if (currentContactInfo) {
+          const fields = [
+            { key: 'primary_phone', newKey: 'primaryPhone' },
+            { key: 'secondary_phone', newKey: 'secondaryPhone' },
+            { key: 'tertiary_phone', newKey: 'tertiaryPhone' },
+            { key: 'email', newKey: 'email' },
+            { key: 'website', newKey: 'website' },
+            { key: 'telegram_username', newKey: 'telegramUsername' },
+            { key: 'discord_server', newKey: 'discordServer' }
+          ];
+          
+          for (const field of fields) {
+            const oldValue = currentContactInfo[field.key];
+            const newValue = data[field.newKey];
+            
+            if (oldValue !== newValue) {
+              await create('contact_info_history', {
+                field: field.newKey,
+                old_value: oldValue || '',
+                new_value: newValue || '',
+                timestamp: new Date().toISOString(),
+                user: user.email
+              });
+            }
+          }
+        }
+        
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            primaryPhone: data.primaryPhone,
+            secondaryPhone: data.secondaryPhone,
+            tertiaryPhone: data.tertiaryPhone,
+            email: data.email || '',
+            website: data.website || '',
+            telegramUsername: data.telegramUsername || '',
+            discordServer: data.discordServer || ''
+          })
+        };
+      }
+      
+      default:
+        return {
+          statusCode: 405,
+          headers,
+          body: JSON.stringify({ error: 'Method Not Allowed' })
+        };
+    }
+  } catch (error) {
+    console.error('Contact info error:', error);
+    
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: 'Internal Server Error' })
+    };
+  }
+};

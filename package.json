@@ -1,0 +1,45 @@
+{
+  "name": "usdt-flasher-pro",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "electron-builder",
+    "pack": "electron-builder --dir"
+  },
+  "keywords": [
+    "electron",
+    "usdt",
+    "crypto",
+    "wallet",
+    "tether"
+  ],
+  "author": "USDT Flasher Team",
+  "license": "ISC",
+  "description": "A professional desktop application for managing USDT transactions and wallets",
+  "devDependencies": {
+    "electron": "^35.0.0"
+  },
+  "build": {
+    "appId": "com.usdtflasher.pro",
+    "productName": "USDT FLASHER PRO",
+    "directories": {
+      "output": "dist"
+    },
+    "mac": {
+      "category": "public.app-category.finance"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.8.1",
+    "sqlite3": "^5.1.7"
+  }
+}

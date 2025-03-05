@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>USDT FLASHER PRO</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- License Key Page -->
+    <div id="license-page" class="license-container">
+        <div class="license-card">
+            <div class="license-logo">
+                <img src="assets/USDT_FLASHER Logo.png" alt="USDT FLASHER PRO Logo">
+                <h1>USDT FLASHER PRO</h1>
+            </div>
+            <div class="license-form">
+                <input type="text" id="license-key" placeholder="Enter License Key">
+                <button id="activate-btn" class="activate-btn">GET STARTED</button>
+            </div>
+            <div class="license-footer">
+                <p id="contact-info">support: +447013216​28 | +14693510740 | +91 7823232332</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application (initially hidden) -->
+    <div id="app-main" class="app-container" style="display: none;">
+        <div class="app-content">
+            <div class="sidebar">
+                <div class="sidebar-logo">
+                    <img src="assets/USDT_FLASHER Logo.png" alt="Logo">
+                </div>
+                <nav class="nav-menu">
+                    <button class="nav-item active" data-section="create-flash">
+                        <span class="nav-icon grid-icon"></span>
+                        <span class="nav-text">Create Flash</span>
+                    </button>
+                    <button class="nav-item" data-section="flash-history">
+                        <span class="nav-icon history-icon"></span>
+                        <span class="nav-text">Flash history</span>
+                    </button>
+                    <button class="nav-item" data-section="support">
+                        <span class="nav-icon support-icon"></span>
+                        <span class="nav-text">support</span>
+                    </button>
+                </nav>
+                <div class="sidebar-footer">
+                    <p>USDT FLASHER PRO V4.8</p>
+                    <button id="logout-btn" class="logout-btn">Logout</button>
+                </div>
+            </div>
+
+            <div class="content-area">
+                <!-- Create Flash Section -->
+                <section id="create-flash" class="content-section active">
+                    <div class="flash-form">
+                        <div class="form-row">
+                            <div class="dropdown" data-type="wallet">
+                                <button class="dropdown-btn">Wallet</button>
+                                <span class="dropdown-arrow">▼</span>
+                            </div>
+                            <div class="dropdown" data-type="currency">
+                                <button class="dropdown-btn">Currency</button>
+                                <span class="dropdown-arrow">▼</span>
+                            </div>
+                            <div class="dropdown" data-type="network">
+                                <button class="dropdown-btn">Network</button>
+                                <span class="dropdown-arrow">▼</span>
+                            </div>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="receiver-address">Receiver Address</label>
+                            <input type="text" id="receiver-address" placeholder="Enter receiver address">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="flash-amount">Flash Amount</label>
+                            <input type="number" id="flash-amount" placeholder="Enter Flash Amount in USDT">
+                        </div>
+                        
+                        <div class="separator"></div>
+                        
+                        <div class="input-group">
+                            <label>Delay</label>
+                            <div class="delay-controls">
+                                <div class="dropdown delay-dropdown" data-type="days">
+                                    <button class="dropdown-btn">0</button>
+                                    <span class="dropdown-arrow">▼</span>
+                                </div>
+                                <div class="dropdown delay-dropdown" data-type="minutes">
+                                    <button class="dropdown-btn">0</button>
+                                    <span class="dropdown-arrow">▼</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="separator"></div>
+                        
+                        <div class="options-section">
+                            <div class="options-row">
+                                <label class="modern-checkbox">
+                                    <input type="checkbox" id="use-proxy">
+                                    <span class="checkmark"></span>
+                                    Use Proxy
+                                </label>
+                                <label class="modern-checkbox">
+                                    <input type="checkbox" id="no-proxy" checked>
+                                    <span class="checkmark"></span>
+                                    Do not use Proxy
+                                </label>
+                            </div>
+                            
+                            <div class="options-row">
+                                <label class="modern-checkbox">
+                                    <input type="checkbox" id="transferable" checked>
+                                    <span class="checkmark"></span>
+                                    Transferable
+                                </label>
+                                <label class="modern-checkbox">
+                                    <input type="checkbox" id="not-transferable">
+                                    <span class="checkmark"></span>
+                                    Not Transferable
+                                </label>
+                            </div>
+                            
+                            <div class="options-row">
+                                <label class="modern-checkbox">
+                                    <input type="checkbox" id="swappable" checked>
+                                    <span class="checkmark"></span>
+                                    Swappable
+                                </label>
+                                <label class="modern-checkbox">
+                                    <input type="checkbox" id="p2p-tradable" checked>
+                                    <span class="checkmark"></span>
+                                    p2p Tradable
+                                </label>
+                                <label class="modern-checkbox">
+                                    <input type="checkbox" id="splittable" checked>
+                                    <span class="checkmark"></span>
+                                    Splittable
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button id="refresh-btn" class="action-btn">Refresh</button>
+                            <button id="send-btn" class="action-btn primary">Send...</button>
+                        </div>
+                    </div>
+                    
+                    <div class="status-panel">
+                        <div class="date-time">
+                            <div class="date" id="current-date"></div>
+                            <div class="time" id="current-time"></div>
+                        </div>
+                        <div class="status-section">
+                            <h3>STATUS</h3>
+                            <div id="status-display" class="status-display"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Flash History Section - Redirects to Create Flash -->
+                <section id="flash-history" class="content-section">
+                    <script>
+                        // Redirect to create-flash section when this section is shown
+                        document.addEventListener('DOMContentLoaded', () => {
+                            const historyNavItem = document.querySelector('.nav-item[data-section="flash-history"]');
+                            if (historyNavItem) {
+                                historyNavItem.addEventListener('click', (e) => {
+                                    e.preventDefault();
+                                    // Activate the create-flash section
+                                    const createFlashNavItem = document.querySelector('.nav-item[data-section="create-flash"]');
+                                    if (createFlashNavItem) {
+                                        createFlashNavItem.click();
+                                    }
+                                });
+                            }
+                        });
+                    </script>
+                </section>
+
+                <!-- Support Section - Opens in a new window -->
+                <section id="support" class="content-section">
+                    <script>
+                        // Open support in a new window when this section is shown
+                        document.addEventListener('DOMContentLoaded', () => {
+                            const supportNavItem = document.querySelector('.nav-item[data-section="support"]');
+                            if (supportNavItem) {
+                                supportNavItem.addEventListener('click', (e) => {
+                                    e.preventDefault();
+                                    
+                                    // Open support in a new window
+                                    const supportWindow = window.open('', 'support_window', 'width=800,height=600');
+                                    
+                                    // Write content to the new window
+                                    supportWindow.document.write(`
+                                        <!DOCTYPE html>
+                                        <html lang="en">
+                                        <head>
+                                            <meta charset="UTF-8">
+                                            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                            <title>USDT FLASHER PRO - Support</title>
+                                            <style>
+                                                body {
+                                                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                                                    background-color: #1a1a1a;
+                                                    color: #f5f6fa;
+                                                    line-height: 1.6;
+                                                    margin: 0;
+                                                    padding: 0;
+                                                }
+                                                
+                                                .support-page {
+                                                    max-width: 800px;
+                                                    margin: 0 auto;
+                                                    padding: 30px;
+                                                }
+                                                
+                                                .header {
+                                                    text-align: center;
+                                                    margin-bottom: 40px;
+                                                    padding-bottom: 20px;
+                                                    border-bottom: 1px solid #333;
+                                                }
+                                                
+                                                .header img {
+                                                    width: 100px;
+                                                    height: auto;
+                                                    margin-bottom: 15px;
+                                                }
+                                                
+                                                .header h1 {
+                                                    color: #00e6b8;
+                                                    margin: 0;
+                                                }
+                                                
+                                                .support-section {
+                                                    margin-bottom: 40px;
+                                                    background-color: #222;
+                                                    border-radius: 10px;
+                                                    padding: 20px;
+                                                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+                                                }
+                                                
+                                                .support-section h2 {
+                                                    color: #00e6b8;
+                                                    margin-top: 0;
+                                                    padding-bottom: 10px;
+                                                    border-bottom: 1px solid #333;
+                                                }
+                                                
+                                                .contact-list {
+                                                    list-style-type: none;
+                                                    padding: 0;
+                                                }
+                                                
+                                                .contact-list li {
+                                                    margin-bottom: 10px;
+                                                    display: flex;
+                                                    align-items: center;
+                                                }
+                                                
+                                                .contact-list li:before {
+                                                    content: "📞";
+                                                    margin-right: 10px;
+                                                }
+                                                
+                                                .contact-item {
+                                                    margin-bottom: 15px;
+                                                }
+                                                
+                                                .contact-item .label {
+                                                    font-weight: bold;
+                                                    color: #00e6b8;
+                                                    margin-right: 10px;
+                                                }
+                                                
+                                                .faq-item {
+                                                    margin-bottom: 20px;
+                                                    border-bottom: 1px solid #333;
+                                                    padding-bottom: 20px;
+                                                }
+                                                
+                                                .faq-item:last-child {
+                                                    border-bottom: none;
+                                                    margin-bottom: 0;
+                                                    padding-bottom: 0;
+                                                }
+                                                
+                                                .faq-question {
+                                                    font-weight: bold;
+                                                    color: #00e6b8;
+                                                    margin-bottom: 10px;
+                                                    cursor: pointer;
+                                                }
+                                                
+                                                .faq-answer {
+                                                    color: #ddd;
+                                                    padding-left: 15px;
+                                                    border-left: 2px solid #00e6b8;
+                                                }
+                                                
+                                                .close-btn {
+                                                    display: block;
+                                                    width: 200px;
+                                                    margin: 30px auto;
+                                                    padding: 10px;
+                                                    background-color: #00e6b8;
+                                                    color: #000;
+                                                    border: none;
+                                                    border-radius: 5px;
+                                                    cursor: pointer;
+                                                    font-weight: bold;
+                                                    text-align: center;
+                                                }
+                                                
+                                                .close-btn:hover {
+                                                    background-color: #00c9a0;
+                                                }
+                                            </style>
+                                        </head>
+                                        <body>
+                                            <div class="support-page">
+                                                <div class="header">
+                                                    <img src="${window.location.origin}/assets/USDT_FLASHER Logo.png" alt="USDT FLASHER PRO Logo">
+                                                    <h1>USDT FLASHER PRO Support</h1>
+                                                </div>
+                                                
+                                                <div class="support-section">
+                                                    <h2>Contact Information</h2>
+                                                    <ul class="contact-list" id="support-contact-list">
+                                                        <li>+447013216​28</li>
+                                                        <li>+14693510740</li>
+                                                        <li>+91 7823232332</li>
+                                                    </ul>
+                                                    
+                                                    <div class="contact-item">
+                                                        <span class="label">Email:</span>
+                                                        <span id="support-email">support@usdtflasherpro.com</span>
+                                                    </div>
+                                                    
+                                                    <div class="contact-item">
+                                                        <span class="label">Website:</span>
+                                                        <span id="support-website">https://usdtflasherpro.com</span>
+                                                    </div>
+                                                    
+                                                    <div class="contact-item">
+                                                        <span class="label">Telegram:</span>
+                                                        <span id="support-telegram">@usdtflasherpro</span>
+                                                    </div>
+                                                    
+                                                    <div class="contact-item">
+                                                        <span class="label">Discord:</span>
+                                                        <span id="support-discord">discord.gg/usdtflasherpro</span>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="support-section">
+                                                    <h2>Frequently Asked Questions</h2>
+                                                    
+                                                    <div class="faq-item">
+                                                        <div class="faq-question">How do I activate my license key?</div>
+                                                        <div class="faq-answer">
+                                                            Enter your license key on the activation screen and click "GET STARTED". 
+                                                            If your key is valid, you will be granted access to the application.
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="faq-item">
+                                                        <div class="faq-question">What is the maximum flash amount?</div>
+                                                        <div class="faq-answer">
+                                                            Demo licenses allow up to 30 USDT, while live licenses allow up to 10,000,000 USDT.
+                                                            The maximum amount depends on your license type.
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="faq-item">
+                                                        <div class="faq-question">How long does a flash transaction take?</div>
+                                                        <div class="faq-answer">
+                                                            Flash transactions are typically processed within minutes, but can be delayed 
+                                                            based on your delay settings. You can set delays in days and minutes.
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="faq-item">
+                                                        <div class="faq-question">What networks are supported?</div>
+                                                        <div class="faq-answer">
+                                                            USDT FLASHER PRO supports multiple networks including TRC20 (Tron), 
+                                                            ERC20 (Ethereum), BEP20 (Binance Smart Chain), SOL (Solana), and MATIC (Polygon).
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="faq-item">
+                                                        <div class="faq-question">How do I get technical support?</div>
+                                                        <div class="faq-answer">
+                                                            For technical support, please contact us using any of the contact methods 
+                                                            listed above. Our support team is available 24/7 to assist you.
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <button class="close-btn" onclick="window.close()">Close Support</button>
+                                            </div>
+                                        </body>
+                                        </html>
+                                    `);
+                                    
+                                    // Close the document
+                                    supportWindow.document.close();
+                                    
+                                    // Activate the create-flash section in the main window
+                                    const createFlashNavItem = document.querySelector('.nav-item[data-section="create-flash"]');
+                                    if (createFlashNavItem) {
+                                        createFlashNavItem.click();
+                                    }
+                                });
+                            }
+                        });
+                    </script>
+                </section>
+            </div>
+        </div>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>
