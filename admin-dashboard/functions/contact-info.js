@@ -1,6 +1,9 @@
 const { getAll, getLatest, create } = require('./utils/supabase');
 const jwt = require('jsonwebtoken');
 
+// Get JWT secret from environment variables
+const JWT_SECRET = process.env.JWT_SECRET || '16d5009c5b3179797a01b5e905a573d04b89a9619d66bbb0c90bfcf7be013b4f';
+
 // Helper function to verify JWT token
 const verifyToken = (authHeader) => {
   if (!authHeader) {
@@ -13,8 +16,10 @@ const verifyToken = (authHeader) => {
   }
 
   try {
-    return jwt.verify(token, process.env.JWT_SECRET);
+    console.log('Verifying token with secret:', JWT_SECRET.substring(0, 10) + '...');
+    return jwt.verify(token, JWT_SECRET);
   } catch (error) {
+    console.error('Token verification error:', error);
     throw new Error('Invalid token');
   }
 };
@@ -125,10 +130,17 @@ exports.handler = async (event, context) => {
       case 'POST': {
         // Update contact info
         const data = JSON.parse(event.body);
+        console.log('Received contact info data:', data);
+        
         const user = verifyToken(event.headers.authorization);
         
+        // Handle both frontend and backend field name formats
+        const primaryPhone = data.primaryPhone || data.primary_phone;
+        const secondaryPhone = data.secondaryPhone || data.secondary_phone;
+        const tertiaryPhone = data.tertiaryPhone || data.tertiary_phone;
+        
         // Validate required fields
-        if (!data.primaryPhone || !data.secondaryPhone || !data.tertiaryPhone) {
+        if (!primaryPhone || !secondaryPhone || !tertiaryPhone) {
           return {
             statusCode: 400,
             headers,
@@ -139,17 +151,21 @@ exports.handler = async (event, context) => {
         // Get current contact info for history
         const currentContactInfo = await getLatest('contact_info');
         
-        // Create new contact info
-        const contactInfo = await create('contact_info', {
-          primary_phone: data.primaryPhone,
-          secondary_phone: data.secondaryPhone,
-          tertiary_phone: data.tertiaryPhone,
+        // Create new contact info with standardized backend field names
+        const contactInfoData = {
+          primary_phone: primaryPhone,
+          secondary_phone: secondaryPhone,
+          tertiary_phone: tertiaryPhone,
           email: data.email || '',
           website: data.website || '',
-          telegram_username: data.telegramUsername || '',
-          discord_server: data.discordServer || '',
+          telegram_username: data.telegramUsername || data.telegram_username || '',
+          discord_server: data.discordServer || data.discord_server || '',
           updated_at: new Date().toISOString()
-        });
+        };
+        
+        console.log('Creating contact info with data:', contactInfoData);
+        
+        const contactInfo = await create('contact_info', contactInfoData);
         
         // Add history entries for changed fields
         if (currentContactInfo) {

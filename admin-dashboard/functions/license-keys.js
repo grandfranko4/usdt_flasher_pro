@@ -1,6 +1,9 @@
 const { getAll, getById, create, update, remove } = require('./utils/supabase');
 const jwt = require('jsonwebtoken');
 
+// Get JWT secret from environment variables
+const JWT_SECRET = process.env.JWT_SECRET || '16d5009c5b3179797a01b5e905a573d04b89a9619d66bbb0c90bfcf7be013b4f';
+
 // Helper function to verify JWT token
 const verifyToken = (authHeader) => {
   if (!authHeader) {
@@ -13,8 +16,10 @@ const verifyToken = (authHeader) => {
   }
 
   try {
-    return jwt.verify(token, process.env.JWT_SECRET);
+    console.log('Verifying token with secret:', JWT_SECRET.substring(0, 10) + '...');
+    return jwt.verify(token, JWT_SECRET);
   } catch (error) {
+    console.error('Token verification error:', error);
     throw new Error('Invalid token');
   }
 };
@@ -83,9 +88,16 @@ exports.handler = async (event, context) => {
       case 'POST': {
         // Create a new license key
         const data = JSON.parse(event.body);
+        console.log('Received license key data:', data);
+        
+        // Handle both frontend and backend field name formats
+        const key = data.key;
+        const status = data.status;
+        const expiresAt = data.expires_at || data.expiresAt;
+        const user = data.user;
         
         // Validate required fields
-        if (!data.key || !data.status || !data.expires_at || !data.user) {
+        if (!key || !status || !expiresAt || !user) {
           return {
             statusCode: 400,
             headers,
@@ -93,13 +105,17 @@ exports.handler = async (event, context) => {
           };
         }
         
-        const licenseKey = await create('license_keys', {
-          key: data.key,
-          status: data.status,
+        const licenseKeyData = {
+          key: key,
+          status: status,
           created_at: new Date().toISOString(),
-          expires_at: data.expires_at,
-          user: data.user
-        });
+          expires_at: expiresAt,
+          user: user
+        };
+        
+        console.log('Creating license key with data:', licenseKeyData);
+        
+        const licenseKey = await create('license_keys', licenseKeyData);
         
         return {
           statusCode: 201,

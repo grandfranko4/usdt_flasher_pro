@@ -2,7 +2,7 @@
 
 # Start the Netlify Functions server in the background
 echo "Starting Netlify Functions server..."
-npx netlify-cli functions:serve &
+npx netlify-cli functions:serve --port 8888 &
 NETLIFY_PID=$!
 
 # Wait a moment for the Netlify server to start

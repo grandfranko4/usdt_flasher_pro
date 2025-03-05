@@ -82,8 +82,22 @@ function LicenseKeys() {
       try {
         setIsLoading(true);
         setError(null);
+        
+        console.log('Fetching license keys...');
         const keys = await fetchLicenseKeys();
-        setLicenseKeys(keys);
+        console.log('Received license keys:', keys);
+        
+        // Map backend field names to frontend field names if needed
+        const mappedKeys = keys.map(key => ({
+          id: key.id,
+          key: key.key,
+          status: key.status,
+          createdAt: key.created_at || key.createdAt,
+          expiresAt: key.expires_at || key.expiresAt,
+          user: key.user
+        }));
+        
+        setLicenseKeys(mappedKeys);
       } catch (error) {
         console.error('Error fetching license keys:', error);
         setError('Failed to load license keys. Please try again.');
@@ -112,18 +126,32 @@ function LicenseKeys() {
       const expiryDate = new Date(today);
       expiryDate.setMonth(today.getMonth() + parseInt(newLicenseData.expiryMonths));
 
-      const newLicense = {
+      // Map frontend field names to backend field names
+      const backendData = {
         key: generateLicenseKey(),
         status: 'active',
-        createdAt: today.toISOString(),
-        expiresAt: expiryDate.toISOString(),
+        created_at: today.toISOString(),
+        expires_at: expiryDate.toISOString(),
         user: newLicenseData.user
       };
-
-      const createdLicense = await addLicenseKey(newLicense);
+      
+      console.log('Creating license key with data:', backendData);
+      
+      const createdLicense = await addLicenseKey(backendData);
+      console.log('Created license key:', createdLicense);
+      
+      // Map backend response to frontend format
+      const mappedLicense = {
+        id: createdLicense.id,
+        key: createdLicense.key,
+        status: createdLicense.status,
+        createdAt: createdLicense.created_at || createdLicense.createdAt,
+        expiresAt: createdLicense.expires_at || createdLicense.expiresAt,
+        user: createdLicense.user
+      };
       
       // Add the new license to the state
-      setLicenseKeys([createdLicense, ...licenseKeys]);
+      setLicenseKeys([mappedLicense, ...licenseKeys]);
       handleCloseDialog();
       
       setSnackbar({

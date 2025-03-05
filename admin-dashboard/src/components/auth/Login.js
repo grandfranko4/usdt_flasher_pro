@@ -51,7 +51,8 @@ function Login() {
         navigate('/');
       } catch (error) {
         console.error('Login component: Login error:', error);
-        setError('Invalid email or password');
+        // Display the actual error message if available, otherwise use a generic message
+        setError(error.message || 'Invalid email or password');
       } finally {
         setLoading(false);
       }

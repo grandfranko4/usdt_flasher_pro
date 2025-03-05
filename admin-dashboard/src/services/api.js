@@ -3,7 +3,7 @@
 // Base URL for API requests
 const baseURL = process.env.NODE_ENV === 'production' 
   ? '/.netlify/functions'
-  : 'http://localhost:9999/.netlify/functions';
+  : 'http://localhost:8888/.netlify/functions';
 
 // Helper function to handle API requests
 const apiRequest = async (endpoint, options = {}) => {
@@ -26,24 +26,36 @@ const apiRequest = async (endpoint, options = {}) => {
   };
   
   try {
+    console.log(`Making API request to: ${baseURL}${endpoint}`);
+    
+    // Make the API request
     const response = await fetch(`${baseURL}${endpoint}`, config);
+    
+    console.log(`API response status: ${response.status}`);
     
     // Handle non-JSON responses
     const contentType = response.headers.get('content-type');
     if (contentType && contentType.includes('application/json')) {
       const data = await response.json();
       
+      console.log(`API response data:`, data);
+      
       if (!response.ok) {
-        throw new Error(data.error || 'API request failed');
+        // If the server returned a JSON error response, use that message
+        const errorMessage = data.error || data.message || 'API request failed';
+        throw new Error(errorMessage);
       }
       
       return data;
     } else {
       if (!response.ok) {
-        throw new Error('API request failed');
+        // For non-JSON error responses, include the status code
+        throw new Error(`API request failed with status ${response.status}`);
       }
       
-      return await response.text();
+      const textResponse = await response.text();
+      console.log(`API text response:`, textResponse);
+      return textResponse;
     }
   } catch (error) {
     console.error(`API request error: ${endpoint}`, error);
@@ -62,11 +74,19 @@ export const login = async (email, password) => {
     if (data.success) {
       // Store token in localStorage
       localStorage.setItem('token', data.token);
+      return data;
+    } else {
+      // If the server returned a failure response with a message
+      const errorMessage = data.message || 'Authentication failed';
+      console.error('Login failed:', errorMessage);
+      throw new Error(errorMessage);
     }
-    
-    return data;
   } catch (error) {
     console.error('Login error:', error);
+    // Rethrow the error with a more descriptive message if needed
+    if (!error.message || error.message === 'Failed to fetch') {
+      throw new Error('Network error: Unable to connect to authentication server');
+    }
     throw error;
   }
 };
@@ -74,10 +94,22 @@ export const login = async (email, password) => {
 // License Keys
 export const fetchLicenseKeys = async () => {
   try {
-    return await apiRequest('/license-keys');
+    const response = await apiRequest('/license-keys');
+    
+    // Ensure we always return an array
+    if (Array.isArray(response)) {
+      return response;
+    } else if (response && typeof response === 'object') {
+      // If it's a single object, wrap it in an array
+      return [response];
+    } else {
+      console.warn('License keys response is not valid:', response);
+      return [];
+    }
   } catch (error) {
     console.error('Error fetching license keys:', error);
-    throw error;
+    // Return empty array instead of throwing to prevent UI errors
+    return [];
   }
 };
 
@@ -129,10 +161,11 @@ export const removeLicenseKey = async (id) => {
 // Contact Information
 export const fetchContactInfo = async () => {
   try {
-    return await apiRequest('/contact-info');
+    const response = await apiRequest('/contact-info');
+    return response || {};
   } catch (error) {
     console.error('Error fetching contact info:', error);
-    throw error;
+    return {};
   }
 };
 
@@ -150,20 +183,31 @@ export const saveContactInfo = async (contactData) => {
 
 export const fetchContactHistory = async () => {
   try {
-    return await apiRequest('/contact-info/history');
+    const response = await apiRequest('/contact-info/history');
+    // Ensure we always return an array
+    if (Array.isArray(response)) {
+      return response;
+    } else if (response && typeof response === 'object') {
+      // If it's a single object, wrap it in an array
+      return [response];
+    } else {
+      console.warn('Contact history response is not valid:', response);
+      return [];
+    }
   } catch (error) {
     console.error('Error fetching contact history:', error);
-    throw error;
+    return [];
   }
 };
 
 // App Settings
 export const fetchAppSettings = async () => {
   try {
-    return await apiRequest('/app-settings');
+    const response = await apiRequest('/app-settings');
+    return response || {};
   } catch (error) {
     console.error('Error fetching app settings:', error);
-    throw error;
+    return {};
   }
 };
 
@@ -182,7 +226,17 @@ export const saveAppSettings = async (settingsData) => {
 // Flash Transactions
 export const fetchFlashHistory = async (licenseKeyId) => {
   try {
-    return await apiRequest(`/flash-history/${licenseKeyId}`);
+    const response = await apiRequest(`/flash-history/${licenseKeyId}`);
+    // Ensure we always return an array
+    if (Array.isArray(response)) {
+      return response;
+    } else if (response && typeof response === 'object') {
+      // If it's a single object, wrap it in an array
+      return [response];
+    } else {
+      console.warn('Flash history response is not valid:', response);
+      return [];
+    }
   } catch (error) {
     console.error('Error fetching flash history:', error);
     return [];

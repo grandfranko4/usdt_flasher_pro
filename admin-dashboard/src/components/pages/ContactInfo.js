@@ -62,13 +62,29 @@ function ContactInfo() {
         setIsLoading(true);
         setError(null);
         
+        console.log('Fetching contact info...');
+        
         // Get contact info
         const info = await fetchContactInfo();
-        setContactInfo(info);
-        setOriginalInfo(info);
+        console.log('Received contact info:', info);
+        
+        // Map backend field names to frontend field names if needed
+        const mappedInfo = {
+          primaryPhone: info.primaryPhone || info.primary_phone || '',
+          secondaryPhone: info.secondaryPhone || info.secondary_phone || '',
+          tertiaryPhone: info.tertiaryPhone || info.tertiary_phone || '',
+          email: info.email || '',
+          website: info.website || '',
+          telegramUsername: info.telegramUsername || info.telegram_username || '',
+          discordServer: info.discordServer || info.discord_server || ''
+        };
+        
+        setContactInfo(mappedInfo);
+        setOriginalInfo(mappedInfo);
         
         // Get change history
         const history = await fetchContactHistory();
+        console.log('Received contact history:', history);
         setChangeHistory(history);
       } catch (error) {
         console.error('Error fetching contact info:', error);
@@ -85,8 +101,21 @@ function ContactInfo() {
     try {
       setIsLoading(true);
       
+      // Map frontend field names to backend field names
+      const backendData = {
+        primary_phone: contactInfo.primaryPhone,
+        secondary_phone: contactInfo.secondaryPhone,
+        tertiary_phone: contactInfo.tertiaryPhone,
+        email: contactInfo.email || '',
+        website: contactInfo.website || '',
+        telegram_username: contactInfo.telegramUsername || '',
+        discord_server: contactInfo.discordServer || ''
+      };
+      
+      console.log('Saving contact info with data:', backendData);
+      
       // Update contact info in the database
-      await saveContactInfo(contactInfo);
+      await saveContactInfo(backendData);
       
       // Update local state
       setOriginalInfo(contactInfo);

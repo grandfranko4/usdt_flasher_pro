@@ -1,6 +1,9 @@
 const { signIn } = require('./utils/supabase');
 const jwt = require('jsonwebtoken');
 
+// Get JWT secret from environment variables
+const JWT_SECRET = process.env.JWT_SECRET || '16d5009c5b3179797a01b5e905a573d04b89a9619d66bbb0c90bfcf7be013b4f';
+
 exports.handler = async (event, context) => {
   // Set CORS headers
   const headers = {
@@ -64,9 +67,11 @@ exports.handler = async (event, context) => {
           email: user.email,
           role: userData.role || 'user'
         },
-        process.env.JWT_SECRET || 'your-jwt-secret',
+        JWT_SECRET,
         { expiresIn: '1d' }
       );
+      
+      console.log('Generated JWT token with secret:', JWT_SECRET.substring(0, 10) + '...');
       
       // Return user data and token
       return {
@@ -81,16 +86,23 @@ exports.handler = async (event, context) => {
             role: userData.role || 'user'
           },
           token,
-          supabaseToken: authData.session.access_token
+          supabaseToken: authData.session?.access_token
         })
       };
     } catch (error) {
       console.error('Supabase authentication error:', error);
       
+      // Provide a more detailed error message
+      const errorMessage = error.message || 'Authentication failed';
+      
       return {
         statusCode: 401,
         headers,
-        body: JSON.stringify({ success: false, message: 'Invalid email or password' })
+        body: JSON.stringify({ 
+          success: false, 
+          message: errorMessage,
+          error: error.toString()
+        })
       };
     }
   } catch (error) {
