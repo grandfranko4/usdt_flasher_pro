@@ -10,9 +10,10 @@ const q = faunadb.query;
 // The Fauna DB secret key
 const FAUNA_SECRET_KEY = 'fnAF5HLcMsAAQkqqX6yAJzPlbXsy753velbBs0Y0';
 
-// Initialize the FaunaDB client with the secret
+// Initialize the FaunaDB client with the secret and API version
 const client = new faunadb.Client({
-  secret: FAUNA_SECRET_KEY
+  secret: FAUNA_SECRET_KEY,
+  apiVersion: '10'
 });
 
 async function testConnection() {
@@ -60,4 +61,10 @@ async function testConnection() {
 }
 
 // Run the test
-testConnection().catch(console.error);
+console.log('Starting test...');
+testConnection()
+  .then(() => console.log('Test completed.'))
+  .catch(error => {
+    console.error('Unhandled error in test:');
+    console.error(error);
+  });
