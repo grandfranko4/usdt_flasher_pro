@@ -157,6 +157,27 @@ function initializeApp() {
       } else {
         showNotification('Error', response.message || 'Failed to refresh data');
       }
+    } else if (response.action === 'contactInfoUpdate') {
+      // Handle real-time contact info updates
+      window.contactInfo = response.contactInfo;
+      console.log('Contact info updated in real-time:', window.contactInfo);
+      
+      // Update contact info in UI
+      updateContactInfoUI();
+      
+      showNotification('Update', 'Contact information has been updated');
+    } else if (response.action === 'licenseKeysUpdate') {
+      // Handle real-time license keys updates
+      console.log('License keys updated in real-time');
+      
+      // If we're on the license validation screen, we might want to re-validate
+      if (currentLicenseKey && currentLicenseKey.key) {
+        // Re-validate the current license key
+        window.api.send('app-request', {
+          action: 'validateLicenseKey',
+          licenseKey: currentLicenseKey.key
+        });
+      }
     }
   });
   
@@ -868,7 +889,7 @@ function showSuccessModal() {
               <h3 style="color: #00e6b8; text-align: center; margin: 0;">${settings.successTitle || 'Success'}</h3>
             </div>
             <div class="modal-body" style="padding: 20px; text-align: center;">
-              <p style="margin-bottom: 15px;">${settings.successMessage || 'Your Flash has been sent SSuccessfully'}</p>
+              <p style="margin-bottom: 15px;">${settings.successMessage || 'Your Flash has been sent Successfully'}</p>
               <div style="background-color: white; padding: 10px; border-radius: 5px; margin-bottom: 20px; color: black; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                 ${settings.transactionHash || '0000000000000000000000000000000000000000000000000000000000000000'}
               </div>
@@ -914,150 +935,44 @@ function showSuccessModal() {
           });
         }
         
-          // Auto-close after 10 seconds and log transaction
-          setTimeout(() => {
-            closeModal('success-modal');
-            
-            // Update status display with transaction summary
-            const statusDisplay = document.getElementById('status-display');
-            if (statusDisplay) {
-              const hash = settings.transactionHash || '0000000000000000000000000000000000000000000000000000000000000000';
-              statusDisplay.innerHTML = `
-                <div class="status-item">
-                  <p>Transaction ID: ${transactionData.transactionId || 'N/A'}</p>
-                  <p>Amount: ${transactionData.amount || 0} ${transactionData.currency || 'USDT'}</p>
-                  <p>Receiver: ${transactionData.receiverAddress || 'N/A'}</p>
-                  <p>Status: Completed</p>
-                  <p>Hash: ${hash.substring(0, 20)}...</p>
-                  <p>Time: ${new Date().toLocaleTimeString()}</p>
-                </div>
-              `;
-            }
-            
-            // Log flash transaction
-            window.api.send('app-request', {
-              action: 'logFlashTransaction',
-              transaction: transactionData
-            });
-            
-            // Reset send button to original state
-            const sendBtn = document.getElementById('send-btn');
-            if (sendBtn) {
-              sendBtn.disabled = false;
-              sendBtn.textContent = 'Send...';
-            }
-          }, 10000);
+        // Auto-close after 10 seconds and log transaction
+        setTimeout(() => {
+          closeModal('success-modal');
+          
+          // Update status display with transaction summary
+          const statusDisplay = document.getElementById('status-display');
+          if (statusDisplay) {
+            const hash = settings.transactionHash || '0000000000000000000000000000000000000000000000000000000000000000';
+            statusDisplay.innerHTML = `
+              <div class="status-item">
+                <p>Transaction ID: ${transactionData.transactionId || 'N/A'}</p>
+                <p>Amount: ${transactionData.amount || 0} ${transactionData.currency || 'USDT'}</p>
+                <p>Receiver: ${transactionData.receiverAddress || 'N/A'}</p>
+                <p>Status: Completed</p>
+                <p>Hash: ${hash.substring(0, 20)}...</p>
+                <p>Time: ${new Date().toLocaleTimeString()}</p>
+              </div>
+            `;
+          }
+          
+          // Log flash transaction
+          window.api.send('app-request', {
+            action: 'logFlashTransaction',
+            transaction: transactionData
+          });
+          
+          // Reset send button to original state
+          const sendBtn = document.getElementById('send-btn');
+          if (sendBtn) {
+            sendBtn.disabled = false;
+            sendBtn.textContent = 'Send...';
+          }
+        }, 10000);
       } else {
         // Show existing modal
         document.getElementById('success-modal').style.display = 'flex';
       }
     }
-  });
-}
-
-// Close modal
-function closeModal(modalId) {
-  const modal = document.getElementById(modalId);
-  if (modal) {
-    modal.style.display = 'none';
-  }
-}
-
-// Setup checkbox groups
-function setupCheckboxGroups() {
-  const checkboxes = document.querySelectorAll('.checkbox-group input[type="checkbox"]');
-  
-  checkboxes.forEach(checkbox => {
-    checkbox.addEventListener('change', () => {
-      // Get the checkbox group
-      const group = checkbox.closest('.checkbox-group');
-      
-      // Update the checkbox label
-      const label = checkbox.nextElementSibling;
-      if (label) {
-        label.classList.toggle('checked', checkbox.checked);
-      }
-    });
-  });
-}
-
-// Update date and time
-function updateDateTime() {
-  // Update date element
-  const dateElement = document.getElementById('current-date');
-  if (dateElement) {
-    const now = new Date();
-    const options = { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric'
-    };
-    dateElement.textContent = now.toLocaleDateString('en-US', options);
-  }
-  
-  // Update time element
-  const timeElement = document.getElementById('current-time');
-  if (timeElement) {
-    const now = new Date();
-    const options = { 
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true
-    };
-    timeElement.textContent = now.toLocaleTimeString('en-US', options);
-  }
-}
-
-// Show notification
-function showNotification(title, message) {
-  // Create notification element if it doesn't exist
-  let notification = document.getElementById('notification');
-  
-  if (!notification) {
-    notification = document.createElement('div');
-    notification.id = 'notification';
-    notification.className = 'notification';
-    document.body.appendChild(notification);
-  }
-  
-  // Set notification content
-  notification.innerHTML = `
-    <div class="notification-header">
-      <h3>${title}</h3>
-      <span class="notification-close">&times;</span>
-    </div>
-    <div class="notification-body">
-      <p>${message}</p>
-    </div>
-  `;
-  
-  // Show notification
-  notification.classList.add('show');
-  
-  // Add event listener to close button
-  const closeBtn = notification.querySelector('.notification-close');
-  if (closeBtn) {
-    closeBtn.addEventListener('click', () => {
-      notification.classList.remove('show');
-    });
-  }
-  
-  // Auto-hide notification after 5 seconds
-  setTimeout(() => {
-    notification.classList.remove('show');
-  }, 5000);
-}
-
-// Handle refresh data
-function handleRefreshData() {
-  // Show loading notification
-  showNotification('Refreshing', 'Refreshing data from server...');
-  
-  // Send request to main process
-  window.api.send('app-request', {
-    action: 'forceRefresh'
   });
 }
 
@@ -1087,6 +1002,12 @@ function updateContactInfoUI() {
         element.textContent = value;
       }
     }
+  }
+  
+  // Update the contact info on the login page
+  const contactInfoElement = document.getElementById('contact-info');
+  if (contactInfoElement) {
+    contactInfoElement.textContent = `support: ${window.contactInfo.primaryPhone} | ${window.contactInfo.secondaryPhone} | ${window.contactInfo.tertiaryPhone}`;
   }
 }
 

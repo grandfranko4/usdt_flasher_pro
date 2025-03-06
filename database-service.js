@@ -2,6 +2,7 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const { app } = require('electron');
+const io = require('socket.io-client');
 
 // Cache data
 let licenseKeysCache = [];
@@ -16,8 +17,12 @@ let lastFetchTime = {
 // Cache expiration time (in milliseconds)
 const CACHE_EXPIRATION = 5 * 60 * 1000; // 5 minutes
 
-// API base URL
+// API base URL and Socket.IO server URL
 const API_BASE_URL = 'https://usdtflasherpro.netlify.app/.netlify/functions';
+const SOCKET_SERVER_URL = process.env.SOCKET_SERVER_URL || 'http://localhost:3030';
+
+// Socket.IO client
+let socket = null;
 
 // Fallback data (used when API is unavailable)
 const fallbackLicenseKeys = [
@@ -241,9 +246,80 @@ const api = {
   }
 };
 
-// Start periodic sync
+// Connect to Socket.IO server
+const connectToSocketServer = () => {
+  try {
+    console.log(`Connecting to Socket.IO server at ${SOCKET_SERVER_URL}`);
+    socket = io(SOCKET_SERVER_URL);
+    
+    // Handle connection events
+    socket.on('connect', () => {
+      console.log('Connected to Socket.IO server');
+    });
+    
+    socket.on('disconnect', () => {
+      console.log('Disconnected from Socket.IO server');
+      // Try to reconnect after a delay
+      setTimeout(() => {
+        if (socket.disconnected) {
+          console.log('Attempting to reconnect to Socket.IO server');
+          socket.connect();
+        }
+      }, 5000);
+    });
+    
+    socket.on('error', (error) => {
+      console.error('Socket.IO error:', error);
+    });
+    
+    // Handle data updates
+    socket.on('contactInfoUpdate', (contactInfo) => {
+      console.log('Received contact info update:', contactInfo);
+      contactInfoCache = contactInfo;
+      lastFetchTime.contactInfo = Date.now();
+      saveCacheToDisk('contactInfo', contactInfo);
+    });
+    
+    socket.on('licenseKeysUpdate', (licenseKeys) => {
+      console.log('Received license keys update:', licenseKeys);
+      licenseKeysCache = licenseKeys;
+      lastFetchTime.licenseKeys = Date.now();
+      saveCacheToDisk('licenseKeys', licenseKeys);
+    });
+    
+    socket.on('appSettingsUpdate', (appSettings) => {
+      console.log('Received app settings update:', appSettings);
+      appSettingsCache = appSettings;
+      lastFetchTime.appSettings = Date.now();
+      saveCacheToDisk('appSettings', appSettings);
+    });
+    
+    socket.on('initialData', (data) => {
+      console.log('Received initial data:', data);
+      
+      if (data.contactInfo) {
+        contactInfoCache = data.contactInfo;
+        lastFetchTime.contactInfo = Date.now();
+        saveCacheToDisk('contactInfo', data.contactInfo);
+      }
+      
+      if (data.appSettings) {
+        appSettingsCache = data.appSettings;
+        lastFetchTime.appSettings = Date.now();
+        saveCacheToDisk('appSettings', data.appSettings);
+      }
+    });
+  } catch (error) {
+    console.error('Error connecting to Socket.IO server:', error);
+  }
+};
+
+// Start periodic sync and connect to Socket.IO server
 const startPeriodicSync = () => {
-  // Sync every 5 minutes
+  // Connect to Socket.IO server
+  connectToSocketServer();
+  
+  // Sync every 5 minutes as a fallback
   setInterval(async () => {
     try {
       await api.fetchLicenseKeys();
@@ -256,7 +332,7 @@ const startPeriodicSync = () => {
   }, CACHE_EXPIRATION);
 };
 
-// Start periodic sync
+// Start periodic sync and Socket.IO connection
 startPeriodicSync();
 
 // Database interface
@@ -317,6 +393,41 @@ const db = {
 // License Key functions
 async function validateLicenseKey(key) {
   try {
+    // If socket is connected, use it for real-time validation
+    if (socket && socket.connected) {
+      return new Promise((resolve, reject) => {
+        // Set up a one-time listener for the validation response
+        socket.once('licenseKeyValidation', (result) => {
+          resolve(result);
+        });
+        
+        // Send validation request
+        socket.emit('validateLicenseKey', { licenseKey: key });
+        
+        // Set a timeout in case the server doesn't respond
+        setTimeout(() => {
+          // Remove the listener to avoid memory leaks
+          socket.off('licenseKeyValidation');
+          
+          // Fall back to local validation
+          validateLicenseKeyLocally(key)
+            .then(resolve)
+            .catch(reject);
+        }, 5000);
+      });
+    } else {
+      // Fall back to local validation if socket is not connected
+      return validateLicenseKeyLocally(key);
+    }
+  } catch (error) {
+    console.error('Error validating license key:', error);
+    return { valid: false, message: 'Error validating license key. Please try again.' };
+  }
+}
+
+// Local license key validation (fallback)
+async function validateLicenseKeyLocally(key) {
+  try {
     // Get all license keys from the database
     const licenseKeys = await db.getLicenseKeys();
     
@@ -354,7 +465,7 @@ async function validateLicenseKey(key) {
     
     return { valid: true, licenseKey };
   } catch (error) {
-    console.error('Error validating license key:', error);
+    console.error('Error validating license key locally:', error);
     return { valid: false, message: 'Error validating license key. Please try again.' };
   }
 }

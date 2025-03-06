@@ -1,99 +1,75 @@
 # USDT FLASHER PRO
 
-A professional application for USDT flash transactions with an admin dashboard for management.
-
-## Project Structure
-
-The project consists of two main parts:
-1. **Desktop Application**: An Electron-based application for end users
-2. **Admin Dashboard**: A React-based web application for administrators
-
-## Setup Instructions
-
-### Prerequisites
-
-- Node.js (v14 or higher)
-- npm (v6 or higher)
-
-### Database Setup
-
-The application uses SQLite for data storage. The database file is automatically created in the `data` directory when the application is first run.
-
-### Admin Dashboard Setup
-
-1. Navigate to the admin dashboard directory:
-   ```
-   cd admin-dashboard
-   ```
-
-2. Install dependencies:
-   ```
-   npm install
-   ```
-
-3. Start the development server:
-   ```
-   npm start
-   ```
-
-4. Build for production:
-   ```
-   npm run build
-   ```
-
-5. Login with the default admin credentials:
-   - Email: mikebtcretriever@gmail.com
-   - Password: Gateway@523
-
-### Desktop Application Setup
-
-1. From the project root directory, install dependencies:
-   ```
-   npm install
-   ```
-
-2. Start the development version:
-   ```
-   npm start
-   ```
-
-3. Build for production:
-   ```
-   npm run build
-   ```
+A professional desktop application for managing USDT transactions and wallets.
 
 ## Features
 
-### Desktop Application
-
 - License key validation
-- USDT flash transactions
-- Transaction history
-- Support information
+- Real-time contact information updates from admin dashboard
+- Real-time license key validation
+- Flash transaction processing
+- Multiple network support (TRC20, ERC20, BEP20, SOL, MATIC)
+- Customizable transaction options
 
-### Admin Dashboard
+## Real-Time Updates
 
-- License key management (create, view, delete)
-- Contact information management
-- Application settings configuration
-- User authentication
+The desktop application now shares the same backend with the admin dashboard, enabling real-time updates:
 
-## Database Structure
+1. **Contact Information**: When support information is updated in the admin dashboard, it is immediately reflected in the desktop application.
+2. **License Keys**: License key validation is performed against the latest data from the database.
+3. **App Settings**: Application settings are synchronized in real-time.
 
-- **license_keys**: Stores license keys with status, expiration, and user information
-- **users**: Stores admin user accounts for the dashboard
-- **app_settings**: Contains application settings and contact information
-- **flash_transactions**: Logs all flash transactions
-- **contact_info**: Stores contact information
-- **contact_info_history**: Tracks changes to contact information
-- **settings_history**: Tracks changes to application settings
+## Setup
 
-## Security
+1. Install dependencies:
+   ```
+   npm install
+   ```
 
-- Local SQLite database for secure storage
-- Protected routes in the admin dashboard
-- License key validation for the desktop application
+2. Start the application with the Socket.IO server:
+   ```
+   npm run start:with-socket
+   ```
 
-## License
+## Development
 
-This project is proprietary and confidential. Unauthorized copying, distribution, or use is strictly prohibited.
+- **Start Electron app only**:
+  ```
+  npm start
+  ```
+
+- **Start in development mode**:
+  ```
+  npm run dev
+  ```
+
+- **Build the application**:
+  ```
+  npm run build
+  ```
+
+## Architecture
+
+The application uses a client-server architecture:
+
+- **Socket.IO Server**: Handles real-time communication between the admin dashboard and desktop applications.
+- **Electron App**: The desktop application that connects to the Socket.IO server.
+- **Admin Dashboard**: Web interface for managing application settings, license keys, and contact information.
+
+## Socket.IO Server
+
+The Socket.IO server provides the following events:
+
+- `contactInfoUpdate`: Broadcasts contact information updates
+- `licenseKeysUpdate`: Broadcasts license key updates
+- `appSettingsUpdate`: Broadcasts application settings updates
+- `validateLicenseKey`: Validates a license key against the database
+
+## Database
+
+The application uses Supabase as the backend database, with the following tables:
+
+- `contact_info`: Stores contact information
+- `contact_info_history`: Tracks changes to contact information
+- `license_keys`: Stores license keys
+- `app_settings`: Stores application settings

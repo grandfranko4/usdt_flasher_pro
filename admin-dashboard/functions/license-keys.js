@@ -1,8 +1,10 @@
 const { getAll, getById, create, update, remove } = require('./utils/supabase');
 const jwt = require('jsonwebtoken');
+const axios = require('axios');
 
-// Get JWT secret from environment variables
+// Get JWT secret and socket server URL from environment variables
 const JWT_SECRET = process.env.JWT_SECRET || '16d5009c5b3179797a01b5e905a573d04b89a9619d66bbb0c90bfcf7be013b4f';
+const SOCKET_SERVER_URL = process.env.SOCKET_SERVER_URL || 'http://localhost:3030';
 
 // Helper function to verify JWT token
 const verifyToken = (authHeader) => {
@@ -117,6 +119,16 @@ exports.handler = async (event, context) => {
         
         const licenseKey = await create('license_keys', licenseKeyData);
         
+        // Broadcast license key update to all connected clients
+        try {
+          console.log('Broadcasting license key update to socket server');
+          const allLicenseKeys = await getAll('license_keys');
+          await axios.post(`${SOCKET_SERVER_URL}/broadcast-license-keys`, allLicenseKeys);
+        } catch (error) {
+          console.error('Error broadcasting license key update:', error);
+          // Continue even if broadcasting fails
+        }
+        
         return {
           statusCode: 201,
           headers,
@@ -144,6 +156,16 @@ exports.handler = async (event, context) => {
           user: data.user
         });
         
+        // Broadcast license key update to all connected clients
+        try {
+          console.log('Broadcasting license key update to socket server');
+          const allLicenseKeys = await getAll('license_keys');
+          await axios.post(`${SOCKET_SERVER_URL}/broadcast-license-keys`, allLicenseKeys);
+        } catch (error) {
+          console.error('Error broadcasting license key update:', error);
+          // Continue even if broadcasting fails
+        }
+        
         return {
           statusCode: 200,
           headers,
@@ -164,6 +186,16 @@ exports.handler = async (event, context) => {
         }
         
         await remove('license_keys', id);
+        
+        // Broadcast license key update to all connected clients
+        try {
+          console.log('Broadcasting license key update to socket server');
+          const allLicenseKeys = await getAll('license_keys');
+          await axios.post(`${SOCKET_SERVER_URL}/broadcast-license-keys`, allLicenseKeys);
+        } catch (error) {
+          console.error('Error broadcasting license key update:', error);
+          // Continue even if broadcasting fails
+        }
         
         return {
           statusCode: 204,

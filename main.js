@@ -2,6 +2,11 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const { validateLicenseKey, logFlashTransaction, getAppSettings, getContactInfo, forceRefresh } = require('./database-service');
 const constants = require('./constants');
+const io = require('socket.io-client');
+
+// Socket.IO client
+let socket = null;
+const SOCKET_SERVER_URL = process.env.SOCKET_SERVER_URL || 'http://localhost:3030';
 
 // Keep a global reference of the window object to prevent it from being garbage collected
 let mainWindow;
@@ -43,6 +48,9 @@ function createWindow() {
 // Create window when Electron has finished initialization
 app.whenReady().then(() => {
   createWindow();
+  
+  // Connect to Socket.IO server
+  connectToSocketServer();
 
   // On macOS it's common to re-create a window when the dock icon is clicked
   app.on('activate', () => {
@@ -51,6 +59,73 @@ app.whenReady().then(() => {
     }
   });
 });
+
+// Connect to Socket.IO server
+function connectToSocketServer() {
+  try {
+    console.log(`Connecting to Socket.IO server at ${SOCKET_SERVER_URL}`);
+    socket = io(SOCKET_SERVER_URL);
+    
+    // Handle connection events
+    socket.on('connect', () => {
+      console.log('Connected to Socket.IO server');
+    });
+    
+    socket.on('disconnect', () => {
+      console.log('Disconnected from Socket.IO server');
+      // Try to reconnect after a delay
+      setTimeout(() => {
+        if (socket && socket.disconnected) {
+          console.log('Attempting to reconnect to Socket.IO server');
+          socket.connect();
+        }
+      }, 5000);
+    });
+    
+    socket.on('error', (error) => {
+      console.error('Socket.IO error:', error);
+    });
+    
+    // Handle data updates
+    socket.on('contactInfoUpdate', (contactInfo) => {
+      console.log('Received contact info update from Socket.IO server:', contactInfo);
+      
+      // Forward to renderer process if window exists
+      if (mainWindow) {
+        mainWindow.webContents.send('app-response', {
+          action: 'contactInfoUpdate',
+          contactInfo
+        });
+      }
+    });
+    
+    socket.on('licenseKeysUpdate', (licenseKeys) => {
+      console.log('Received license keys update from Socket.IO server');
+      
+      // Forward to renderer process if window exists
+      if (mainWindow) {
+        mainWindow.webContents.send('app-response', {
+          action: 'licenseKeysUpdate',
+          licenseKeys
+        });
+      }
+    });
+    
+    socket.on('appSettingsUpdate', (appSettings) => {
+      console.log('Received app settings update from Socket.IO server');
+      
+      // Forward to renderer process if window exists
+      if (mainWindow) {
+        mainWindow.webContents.send('app-response', {
+          action: 'appSettingsUpdate',
+          appSettings
+        });
+      }
+    });
+  } catch (error) {
+    console.error('Error connecting to Socket.IO server:', error);
+  }
+}
 
 // Quit when all windows are closed, except on macOS
 app.on('window-all-closed', () => {

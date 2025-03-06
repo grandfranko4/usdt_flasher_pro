@@ -1,8 +1,10 @@
 const { getAll, getLatest, create } = require('./utils/supabase');
 const jwt = require('jsonwebtoken');
+const axios = require('axios');
 
-// Get JWT secret from environment variables
+// Get JWT secret and socket server URL from environment variables
 const JWT_SECRET = process.env.JWT_SECRET || '16d5009c5b3179797a01b5e905a573d04b89a9619d66bbb0c90bfcf7be013b4f';
+const SOCKET_SERVER_URL = process.env.SOCKET_SERVER_URL || 'http://localhost:3030';
 
 // Helper function to verify JWT token
 const verifyToken = (authHeader) => {
@@ -195,18 +197,30 @@ exports.handler = async (event, context) => {
           }
         }
         
+        // Prepare response data
+        const responseData = {
+          primaryPhone: data.primaryPhone,
+          secondaryPhone: data.secondaryPhone,
+          tertiaryPhone: data.tertiaryPhone,
+          email: data.email || '',
+          website: data.website || '',
+          telegramUsername: data.telegramUsername || '',
+          discordServer: data.discordServer || ''
+        };
+        
+        // Broadcast contact info update to all connected clients
+        try {
+          console.log('Broadcasting contact info update to socket server');
+          await axios.post(`${SOCKET_SERVER_URL}/broadcast-contact-info`, responseData);
+        } catch (error) {
+          console.error('Error broadcasting contact info update:', error);
+          // Continue even if broadcasting fails
+        }
+        
         return {
           statusCode: 200,
           headers,
-          body: JSON.stringify({
-            primaryPhone: data.primaryPhone,
-            secondaryPhone: data.secondaryPhone,
-            tertiaryPhone: data.tertiaryPhone,
-            email: data.email || '',
-            website: data.website || '',
-            telegramUsername: data.telegramUsername || '',
-            discordServer: data.discordServer || ''
-          })
+          body: JSON.stringify(responseData)
         };
       }
       
