@@ -1,14 +1,17 @@
 {
   "name": "usdt-flasher-pro",
   "version": "1.0.0",
-  "main": "main.js",
+  "main": "electron-starter.js",
   "scripts": {
     "start": "electron .",
     "dev": "electron . --dev",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "electron-builder",
+    "build": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux",
     "pack": "electron-builder --dir",
-    "start:with-socket": "node start-app.js"
+    "start:with-socket": "node start-app.js",
+    "postinstall": "electron-builder install-app-deps"
   },
   "keywords": [
     "electron",
@@ -21,7 +24,8 @@
   "license": "ISC",
   "description": "A professional desktop application for managing USDT transactions and wallets",
   "devDependencies": {
-    "electron": "^35.0.0"
+    "electron": "^35.0.0",
+    "electron-builder": "^25.1.8"
   },
   "build": {
     "appId": "com.usdtflasher.pro",
@@ -29,14 +33,42 @@
     "directories": {
       "output": "dist"
     },
+    "files": [
+      "**/*",
+      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!**/node_modules/*.d.ts",
+      "!**/node_modules/.bin",
+      "!**/.{idea,git,cache,github,vscode}",
+      "!**/{.DS_Store,.git,.gitignore,.npmignore}",
+      "!**/admin-dashboard/**",
+      "!**/Prototype/**"
+    ],
+    "npmRebuild": false,
+    "electronVersion": "35.0.0",
+    "extraResources": [
+      {
+        "from": ".env",
+        "to": ".env"
+      }
+    ],
     "mac": {
-      "category": "public.app-category.finance"
+      "category": "public.app-category.finance",
+      "icon": "assets/USDT_FLASHER Logo.png"
     },
     "win": {
-      "target": "nsis"
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "assets/USDT_FLASHER Logo.png",
+      "artifactName": "${productName} Setup ${version}.${ext}"
     },
     "linux": {
-      "target": "AppImage"
+      "target": "AppImage",
+      "icon": "assets/USDT_FLASHER Logo.png"
     }
   },
   "dependencies": {
@@ -44,7 +76,9 @@
     "axios": "^1.6.7",
     "better-sqlite3": "^11.8.1",
     "body-parser": "^1.20.3",
+    "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "nodemailer": "^6.10.0",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
     "sqlite3": "^5.1.7"

@@ -83,6 +83,13 @@ body {
   gap: 20px;
 }
 
+.error-message {
+  color: #e84118;
+  font-size: 0.9rem;
+  margin-top: -10px;
+  text-align: center;
+}
+
 #license-key {
   width: 100%;
   padding: 12px 15px;
@@ -114,11 +121,29 @@ body {
   cursor: pointer;
   transition: all 0.2s;
   text-transform: uppercase;
+  width: 100%;
 }
 
 .activate-btn:hover {
   background-color: var(--primary-color);
   color: white;
+}
+
+.info-btn {
+  padding: 8px 20px;
+  background-color: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--text-muted);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 10px;
+}
+
+.info-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-color);
 }
 
 .license-footer {
@@ -578,6 +603,7 @@ body {
   white-space: nowrap;
   text-overflow: ellipsis;
   width: 100%;
+  display: block;
 }
 
 .status-message::after {
@@ -679,6 +705,95 @@ body {
   
   .sidebar-footer p {
     display: none;
+  }
+  
+  .app-content {
+    flex-direction: column;
+  }
+  
+  .content-area {
+    padding: 15px;
+  }
+  
+  #create-flash {
+    flex-direction: column;
+  }
+  
+  .flash-form {
+    width: 100%;
+    padding-right: 0;
+    margin-bottom: 20px;
+  }
+  
+  .status-panel {
+    width: 100%;
+  }
+  
+  .form-row {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .dropdown {
+    width: 100%;
+  }
+  
+  .options-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .modern-checkbox {
+    margin-bottom: 10px;
+  }
+  
+  .delay-controls {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .delay-dropdown {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .license-card {
+    padding: 30px 15px;
+  }
+  
+  .license-logo img {
+    width: 80px;
+  }
+  
+  .license-logo h1 {
+    font-size: 1.5rem;
+  }
+  
+  .license-form {
+    max-width: 100%;
+  }
+  
+  .license-footer {
+    font-size: 0.75rem;
+  }
+  
+  .modal-content {
+    width: 95%;
+  }
+  
+  .form-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .action-btn {
+    width: 100%;
+  }
+  
+  .footer-buttons {
+    flex-direction: column;
   }
 }
 
@@ -1080,4 +1195,88 @@ body {
 
 .license-key-header {
   background-color: #666;
+}
+
+/* Notification Styles */
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background-color: #333;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  width: 300px;
+  overflow: hidden;
+  z-index: 3000;
+  display: none;
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.notification-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+}
+
+/* Info Modal Styles */
+.info-modal-content {
+  max-width: 500px;
+  border: 1px solid var(--primary-color);
+}
+
+.info-modal-header {
+  background-color: rgba(0, 230, 184, 0.1);
+}
+
+.info-modal-header h2 {
+  color: var(--primary-color);
+}
+
+.info-content {
+  margin-bottom: 20px;
+}
+
+.info-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--primary-color);
+  margin-bottom: 15px;
+}
+
+.info-description {
+  margin-bottom: 15px;
+  line-height: 1.6;
+}
+
+.info-contact {
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 15px;
+  border-radius: 5px;
+  margin-top: 20px;
+}
+
+.info-contact p {
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.info-contact ul {
+  list-style-type: none;
+  padding-left: 10px;
+}
+
+.info-contact li {
+  margin-bottom: 5px;
 }

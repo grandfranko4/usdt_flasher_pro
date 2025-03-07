@@ -1,5 +1,15 @@
 const { spawn } = require('child_process');
 const path = require('path');
+const fs = require('fs');
+const dotenv = require('dotenv');
+
+// Load environment variables from .env file
+if (fs.existsSync('.env')) {
+  console.log('Loading environment variables from .env file...');
+  dotenv.config();
+} else {
+  console.log('No .env file found, using default environment variables.');
+}
 
 // Start the Socket.IO server
 console.log('Starting Socket.IO server...');
@@ -17,7 +27,11 @@ setTimeout(() => {
     shell: true,
     env: {
       ...process.env,
-      SOCKET_SERVER_URL: 'http://localhost:3030'
+      SOCKET_SERVER_URL: process.env.SOCKET_SERVER_URL || 'http://localhost:3030',
+      API_BASE_URL: process.env.API_BASE_URL || 'https://usdtflasherpro.netlify.app/.netlify/functions',
+      SUPABASE_URL: process.env.SUPABASE_URL,
+      SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
+      EMAIL_PASSWORD: process.env.EMAIL_PASSWORD
     }
   });
 

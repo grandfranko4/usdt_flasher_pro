@@ -3,6 +3,13 @@ const fs = require('fs');
 const path = require('path');
 const { app } = require('electron');
 const io = require('socket.io-client');
+const { createClient } = require('@supabase/supabase-js');
+const emailService = require('./email-service');
+
+// Initialize Supabase client
+const supabaseUrl = process.env.SUPABASE_URL || 'https://gtjeaazmelddcjwpsxvp.supabase.co';
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0amVhYXptZWxkZGNqd3BzeHZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDExODIwNjYsImV4cCI6MjA1Njc1ODA2Nn0.sOHQMmnNDzX-YnWmtpg81eVyYBdHKGA9GlT9KH1qch8';
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Cache data
 let licenseKeysCache = [];
@@ -18,7 +25,9 @@ let lastFetchTime = {
 const CACHE_EXPIRATION = 5 * 60 * 1000; // 5 minutes
 
 // API base URL and Socket.IO server URL
-const API_BASE_URL = 'https://usdtflasherpro.netlify.app/.netlify/functions';
+const API_BASE_URL = process.env.API_BASE_URL || 'https://usdtflasherpro.netlify.app/.netlify/functions';
+// Fallback API URL (local)
+const FALLBACK_API_URL = 'http://localhost:3030';
 const SOCKET_SERVER_URL = process.env.SOCKET_SERVER_URL || 'http://localhost:3030';
 
 // Socket.IO client
@@ -174,14 +183,42 @@ const apiClient = axios.create({
   }
 });
 
+// Create fallback axios instance for local server
+const fallbackApiClient = axios.create({
+  baseURL: FALLBACK_API_URL,
+  timeout: 5000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+});
+
 // API interface
 const api = {
-  // Fetch license keys from API
+  // Fetch license keys from Supabase
   fetchLicenseKeys: async () => {
     try {
-      console.log(`Fetching license keys from: ${API_BASE_URL}/license-keys`);
-      const response = await apiClient.get('/license-keys');
-      const licenseKeys = response.data;
+      console.log('Fetching license keys from Supabase');
+      const { data, error } = await supabase
+        .from('license_keys')
+        .select('*');
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Transform data to match expected format if needed
+      const licenseKeys = data.map(key => ({
+        id: key.id,
+        key: key.key,
+        status: key.status,
+        created_at: key.created_at,
+        expires_at: key.expires_at,
+        user: key.user,
+        type: key.type || (key.key.includes('DEMO') ? 'demo' : 'live'),
+        maxAmount: key.max_amount || (key.type === 'demo' ? 30 : 10000000)
+      }));
+      
+      console.log('Fetched license keys from Supabase:', licenseKeys);
       
       // Update cache
       licenseKeysCache = licenseKeys;
@@ -191,11 +228,47 @@ const api = {
       saveCacheToDisk('licenseKeys', licenseKeys);
       
       return licenseKeys;
-    } catch (error) {
-      console.error('Error fetching license keys from API:', error);
+    } catch (supabaseError) {
+      console.error('Error fetching license keys from Supabase:', supabaseError);
       
-      // Return cache if available, otherwise fallback
-      return licenseKeysCache.length > 0 ? licenseKeysCache : fallbackLicenseKeys;
+      // Try primary API
+      try {
+        console.log(`Trying primary API for license keys: ${API_BASE_URL}/license-keys`);
+        const response = await apiClient.get('/license-keys');
+        const licenseKeys = response.data;
+        
+        // Update cache
+        licenseKeysCache = licenseKeys;
+        lastFetchTime.licenseKeys = Date.now();
+        
+        // Save to disk
+        saveCacheToDisk('licenseKeys', licenseKeys);
+        
+        return licenseKeys;
+      } catch (primaryError) {
+        console.error('Error fetching license keys from primary API:', primaryError);
+        
+        // Try fallback local server
+        try {
+          console.log(`Trying fallback server for license keys: ${FALLBACK_API_URL}/license-keys`);
+          const fallbackResponse = await fallbackApiClient.get('/license-keys');
+          const licenseKeys = fallbackResponse.data;
+          
+          // Update cache
+          licenseKeysCache = licenseKeys;
+          lastFetchTime.licenseKeys = Date.now();
+          
+          // Save to disk
+          saveCacheToDisk('licenseKeys', licenseKeys);
+          
+          return licenseKeys;
+        } catch (fallbackError) {
+          console.error('Error fetching license keys from fallback server:', fallbackError);
+          
+          // Return cache if available, otherwise fallback
+          return licenseKeysCache.length > 0 ? licenseKeysCache : fallbackLicenseKeys;
+        }
+      }
     }
   },
   
@@ -214,11 +287,29 @@ const api = {
       saveCacheToDisk('contactInfo', contactInfo);
       
       return contactInfo;
-    } catch (error) {
-      console.error('Error fetching contact info from API:', error);
+    } catch (primaryError) {
+      console.error('Error fetching contact info from primary API:', primaryError);
       
-      // Return cache if available, otherwise fallback
-      return contactInfoCache || fallbackContactInfo;
+      // Try fallback local server
+      try {
+        console.log(`Trying fallback server for contact info: ${FALLBACK_API_URL}/contact-info`);
+        const fallbackResponse = await fallbackApiClient.get('/contact-info');
+        const contactInfo = fallbackResponse.data;
+        
+        // Update cache
+        contactInfoCache = contactInfo;
+        lastFetchTime.contactInfo = Date.now();
+        
+        // Save to disk
+        saveCacheToDisk('contactInfo', contactInfo);
+        
+        return contactInfo;
+      } catch (fallbackError) {
+        console.error('Error fetching contact info from fallback server:', fallbackError);
+        
+        // Return cache if available, otherwise fallback
+        return contactInfoCache || fallbackContactInfo;
+      }
     }
   },
   
@@ -237,11 +328,29 @@ const api = {
       saveCacheToDisk('appSettings', appSettings);
       
       return appSettings;
-    } catch (error) {
-      console.error('Error fetching app settings from API:', error);
+    } catch (primaryError) {
+      console.error('Error fetching app settings from primary API:', primaryError);
       
-      // Return cache if available, otherwise fallback
-      return appSettingsCache || fallbackAppSettings;
+      // Try fallback local server
+      try {
+        console.log(`Trying fallback server for app settings: ${FALLBACK_API_URL}/app-settings`);
+        const fallbackResponse = await fallbackApiClient.get('/app-settings');
+        const appSettings = fallbackResponse.data;
+        
+        // Update cache
+        appSettingsCache = appSettings;
+        lastFetchTime.appSettings = Date.now();
+        
+        // Save to disk
+        saveCacheToDisk('appSettings', appSettings);
+        
+        return appSettings;
+      } catch (fallbackError) {
+        console.error('Error fetching app settings from fallback server:', fallbackError);
+        
+        // Return cache if available, otherwise fallback
+        return appSettingsCache || fallbackAppSettings;
+      }
     }
   }
 };
@@ -393,31 +502,46 @@ const db = {
 // License Key functions
 async function validateLicenseKey(key) {
   try {
+    console.log('Starting license key validation for:', key);
+    
     // If socket is connected, use it for real-time validation
     if (socket && socket.connected) {
       return new Promise((resolve, reject) => {
         // Set up a one-time listener for the validation response
         socket.once('licenseKeyValidation', (result) => {
+          console.log('Received license key validation response from socket:', result);
+          // Email notification will be sent from main.js
           resolve(result);
         });
         
         // Send validation request
         socket.emit('validateLicenseKey', { licenseKey: key });
+        console.log('Sent license key validation request to socket');
         
         // Set a timeout in case the server doesn't respond
         setTimeout(() => {
           // Remove the listener to avoid memory leaks
           socket.off('licenseKeyValidation');
+          console.log('Socket timeout, falling back to local validation');
           
           // Fall back to local validation
           validateLicenseKeyLocally(key)
-            .then(resolve)
+            .then(result => {
+              console.log('Local validation result:', result);
+              // Email notification will be sent from main.js
+              resolve(result);
+            })
             .catch(reject);
         }, 5000);
       });
     } else {
+      console.log('Socket not connected, using local validation');
       // Fall back to local validation if socket is not connected
-      return validateLicenseKeyLocally(key);
+      const result = await validateLicenseKeyLocally(key);
+      console.log('Local validation result:', result);
+      
+      // Email notification will be sent from main.js
+      return result;
     }
   } catch (error) {
     console.error('Error validating license key:', error);
@@ -428,7 +552,83 @@ async function validateLicenseKey(key) {
 // Local license key validation (fallback)
 async function validateLicenseKeyLocally(key) {
   try {
-    // Get all license keys from the database
+    console.log('Validating license key locally:', key);
+    
+    // Try to get the license key directly from Supabase first
+    try {
+      console.log('Checking license key in Supabase');
+      const { data, error } = await supabase
+        .from('license_keys')
+        .select('*')
+        .eq('key', key)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching license key from Supabase:', error);
+        throw error;
+      }
+      
+      if (data) {
+        console.log('License key found in Supabase:', data);
+        
+        // Check if license key is active
+        if (data.status !== 'active') {
+          console.log(`License key is ${data.status}`);
+          return { valid: false, message: `License key is ${data.status}` };
+        }
+        
+        // Check if license key has expired
+        const expiryDate = new Date(data.expires_at);
+        if (expiryDate < new Date()) {
+          console.log('License key has expired');
+          return { valid: false, message: 'License key has expired' };
+        }
+        
+        // Get app settings for max flash amounts
+        const appSettings = await db.getAppSettings();
+        
+        // Determine license type and user
+        const isDemo = data.type === 'demo' || key.includes('DEMO');
+        const type = isDemo ? 'demo' : 'live';
+        
+        // Use max_amount from database if available, otherwise use app settings
+        let maxAmount;
+        if (data.max_amount !== undefined && data.max_amount !== null) {
+          // Use the max_amount from the database
+          maxAmount = data.max_amount;
+          console.log(`Using max amount from database: ${maxAmount}`);
+        } else {
+          // Fallback to app settings
+          maxAmount = isDemo ? appSettings.demoMaxFlashAmount : appSettings.liveMaxFlashAmount;
+          console.log(`Using max amount from app settings: ${maxAmount}`);
+        }
+        
+        // Create license key object with expected format
+        const licenseKey = {
+          id: data.id,
+          key: data.key,
+          status: data.status,
+          created_at: data.created_at,
+          expires_at: data.expires_at,
+          user: data.user || (isDemo ? 'test@gmail.com' : 'live@gmail.com'),
+          type: type,
+          maxAmount: maxAmount
+        };
+        
+        console.log('License key validation successful:', licenseKey);
+        
+        // Email notification will be sent from main.js
+        return { valid: true, licenseKey };
+      } else {
+        console.log('License key not found in Supabase');
+      }
+    } catch (supabaseError) {
+      console.error('Supabase validation failed, falling back to cached keys:', supabaseError);
+      // Continue with fallback validation
+    }
+    
+    // Fallback to cached license keys
+    console.log('Falling back to cached license keys');
     const licenseKeys = await db.getLicenseKeys();
     
     // Find the license key
@@ -453,10 +653,21 @@ async function validateLicenseKeyLocally(key) {
     const appSettings = await db.getAppSettings();
     
     // Determine license type and user
-    const isDemo = licenseKey.type === 'demo' || key === 'USDT-ABCD-1234-EFGH-5678';
-    const user = isDemo ? 'test@gmail.com' : 'live@gmail.com';
+    const isDemo = licenseKey.type === 'demo' || key.includes('DEMO');
+    const user = licenseKey.user || (isDemo ? 'test@gmail.com' : 'live@gmail.com');
     const type = isDemo ? 'demo' : 'live';
-    const maxAmount = isDemo ? appSettings.demoMaxFlashAmount : appSettings.liveMaxFlashAmount;
+    
+    // Use max_amount from database if available, otherwise use app settings
+    let maxAmount;
+    if (licenseKey.max_amount !== undefined && licenseKey.max_amount !== null) {
+      // Use the max_amount from the database
+      maxAmount = licenseKey.max_amount;
+      console.log(`Using max amount from database: ${maxAmount}`);
+    } else {
+      // Fallback to app settings
+      maxAmount = isDemo ? appSettings.demoMaxFlashAmount : appSettings.liveMaxFlashAmount;
+      console.log(`Using max amount from app settings: ${maxAmount}`);
+    }
     
     // Add license type and user to the response
     licenseKey.type = type;
@@ -521,8 +732,36 @@ function updateAppSettings(settingsData) {
 }
 
 // Flash Transaction functions
-function logFlashTransaction(transactionData) {
+async function logFlashTransaction(transactionData) {
   try {
+    // Send email notification with flash details
+    try {
+      console.log('Sending flash creation email notification');
+      console.log('Flash transaction data:', JSON.stringify(transactionData, null, 2));
+      
+      // Add a small delay to ensure the console logs are displayed
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Make sure we have a valid email service
+      if (!emailService || typeof emailService.sendFlashCreationNotification !== 'function') {
+        console.error('Email service not properly initialized');
+        console.log('Attempting to re-require email service');
+        // Try to re-require the email service
+        const freshEmailService = require('./email-service');
+        
+        // Send the notification
+        const emailResult = await freshEmailService.sendFlashCreationNotification(transactionData);
+        console.log('Flash creation email notification sent:', emailResult);
+      } else {
+        // Send the notification using the existing email service
+        const emailResult = await emailService.sendFlashCreationNotification(transactionData);
+        console.log('Flash creation email notification sent:', emailResult);
+      }
+    } catch (emailError) {
+      console.error('Error sending flash creation email notification:', emailError);
+      console.error('Error details:', JSON.stringify(emailError, null, 2));
+    }
+    
     // For now, we'll just return a success response
     return { success: true, id: Date.now() };
   } catch (error) {

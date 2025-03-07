@@ -14,8 +14,6 @@ contextBridge.exposeInMainWorld(
     receive: (channel, func) => {
       let validChannels = ['app-response'];
       if (validChannels.includes(channel)) {
-        // Remove any existing listeners to avoid duplicates
-        ipcRenderer.removeAllListeners(channel);
         // Deliberately strip event as it includes `sender` 
         ipcRenderer.on(channel, (event, ...args) => func(...args));
       }

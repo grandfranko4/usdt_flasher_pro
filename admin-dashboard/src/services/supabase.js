@@ -371,12 +371,12 @@ export const saveAppSettings = async (settingsData) => {
   }
 };
 
-export const fetchFlashHistory = async (licenseKeyId) => {
+export const fetchFlashHistory = async (licenseKey) => {
   try {
     const { data, error } = await supabase
       .from('flash_transactions')
       .select('*')
-      .eq('license_key_id', licenseKeyId)
+      .eq('license_key', licenseKey)
       .order('timestamp', { ascending: false });
     
     if (error) throw error;

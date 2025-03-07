@@ -1,10 +1,17 @@
 const { createClient } = require('@supabase/supabase-js');
 
 // Initialize the Supabase client with the URL and API key
-const supabase = createClient(
-  process.env.SUPABASE_URL || 'https://gtjeaazmelddcjwpsxvp.supabase.co',
-  process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0amVhYXptZWxkZGNqd3BzeHZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDExODIwNjYsImV4cCI6MjA1Njc1ODA2Nn0.sOHQMmnNDzX-YnWmtpg81eVyYBdHKGA9GlT9KH1qch8'
-);
+const supabaseUrl = process.env.SUPABASE_URL || 'https://gtjeaazmelddcjwpsxvp.supabase.co';
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0amVhYXptZWxkZGNqd3BzeHZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDExODIwNjYsImV4cCI6MjA1Njc1ODA2Nn0.sOHQMmnNDzX-YnWmtpg81eVyYBdHKGA9GlT9KH1qch8';
+
+console.log('Initializing Supabase client with URL:', supabaseUrl);
+const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: false, // Don't persist session in Netlify functions
+    autoRefreshToken: true,
+    detectSessionInUrl: false
+  }
+});
 
 /**
  * Initialize the Supabase database with tables

