@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const axios = require('axios');
 
 // Get JWT secret and socket server URL from environment variables
-const JWT_SECRET = process.env.JWT_SECRET || '16d5009c5b3179797a01b5e905a573d04b89a9619d66bbb0c90bfcf7be013b4f';
+const JWT_SECRET = process.env.JWT_SECRET || '26a62eda86ec779538b7afc01fb196cdde5591fd6396bb91ba31693a9da50a58';
 const SOCKET_SERVER_URL = process.env.SOCKET_SERVER_URL || 'http://localhost:3030';
 
 // Helper function to verify JWT token
