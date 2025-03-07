@@ -1,9 +1,18 @@
 // API service using browser's fetch API
 
 // Base URL for API requests
-const baseURL = process.env.NODE_ENV === 'production' 
-  ? '/.netlify/functions'
-  : 'http://localhost:8888/.netlify/functions';
+// First try the local API server, then fall back to Netlify functions
+const getBaseURL = () => {
+  if (process.env.NODE_ENV === 'production') {
+    // In production, use the Netlify functions
+    return '/.netlify/functions';
+  } else {
+    // In development, try the local API server first
+    return 'http://localhost:3001';
+  }
+};
+
+const baseURL = getBaseURL();
 
 // Helper function to handle API requests
 const apiRequest = async (endpoint, options = {}) => {
@@ -26,47 +35,109 @@ const apiRequest = async (endpoint, options = {}) => {
   };
   
   try {
-    console.log(`Making API request to: ${baseURL}${endpoint}`);
+    // First try the local API server
+    let apiUrl = `${baseURL}${endpoint}`;
+    console.log(`Making API request to: ${apiUrl}`);
     
-    // Make the API request
-    const response = await fetch(`${baseURL}${endpoint}`, config);
-    
-    console.log(`API response status: ${response.status}`);
-    
-    // Handle non-JSON responses
-    const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('application/json')) {
-      const data = await response.json();
+    try {
+      // Make the API request
+      const response = await fetch(apiUrl, config);
       
-      console.log(`API response data:`, data);
+      console.log(`API response status: ${response.status}`);
       
-      if (!response.ok) {
-        // If the server returned a JSON error response, use that message
-        const errorMessage = data.error || data.message || 'API request failed';
-        throw new Error(errorMessage);
-      }
-      
-      return data;
-    } else {
-      if (!response.ok) {
-        // For non-JSON error responses, include the status code
-        throw new Error(`API request failed with status ${response.status}`);
-      }
-      
-      const textResponse = await response.text();
-      console.log(`API text response:`, textResponse);
-      
-      // Try to parse the text as JSON if it looks like JSON
-      if (textResponse.trim().startsWith('{') || textResponse.trim().startsWith('[')) {
-        try {
-          return JSON.parse(textResponse);
-        } catch (e) {
-          console.warn('Failed to parse text response as JSON:', e);
-          // Fall back to returning the text if parsing fails
+      // Handle non-JSON responses
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const data = await response.json();
+        
+        console.log(`API response data:`, data);
+        
+        if (!response.ok) {
+          // If the server returned a JSON error response, use that message
+          const errorMessage = data.error || data.message || 'API request failed';
+          throw new Error(errorMessage);
         }
+        
+        return data;
+      } else {
+        if (!response.ok) {
+          // For non-JSON error responses, include the status code
+          throw new Error(`API request failed with status ${response.status}`);
+        }
+        
+        const textResponse = await response.text();
+        console.log(`API text response:`, textResponse);
+        
+        // Try to parse the text as JSON if it looks like JSON
+        if (textResponse.trim().startsWith('{') || textResponse.trim().startsWith('[')) {
+          try {
+            return JSON.parse(textResponse);
+          } catch (e) {
+            console.warn('Failed to parse text response as JSON:', e);
+            // Fall back to returning the text if parsing fails
+          }
+        }
+        
+        // If we're in development and got an HTML response, it might be because the local API server
+        // is not running. Try the Netlify functions as a fallback.
+        if (process.env.NODE_ENV !== 'production' && textResponse.includes('<!doctype html>')) {
+          throw new Error('Local API server returned HTML, trying Netlify functions');
+        }
+        
+        return textResponse;
       }
-      
-      return textResponse;
+    } catch (error) {
+      // If we're in development and the local API server failed, try the Netlify functions
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('Local API server failed, trying Netlify functions');
+        
+        // Try the Netlify functions
+        apiUrl = `http://localhost:8888/.netlify/functions${endpoint}`;
+        console.log(`Making API request to: ${apiUrl}`);
+        
+        const response = await fetch(apiUrl, config);
+        
+        console.log(`API response status: ${response.status}`);
+        
+        // Handle non-JSON responses
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          
+          console.log(`API response data:`, data);
+          
+          if (!response.ok) {
+            // If the server returned a JSON error response, use that message
+            const errorMessage = data.error || data.message || 'API request failed';
+            throw new Error(errorMessage);
+          }
+          
+          return data;
+        } else {
+          if (!response.ok) {
+            // For non-JSON error responses, include the status code
+            throw new Error(`API request failed with status ${response.status}`);
+          }
+          
+          const textResponse = await response.text();
+          console.log(`API text response:`, textResponse);
+          
+          // Try to parse the text as JSON if it looks like JSON
+          if (textResponse.trim().startsWith('{') || textResponse.trim().startsWith('[')) {
+            try {
+              return JSON.parse(textResponse);
+            } catch (e) {
+              console.warn('Failed to parse text response as JSON:', e);
+              // Fall back to returning the text if parsing fails
+            }
+          }
+          
+          return textResponse;
+        }
+      } else {
+        // In production, just rethrow the error
+        throw error;
+      }
     }
   } catch (error) {
     console.error(`API request error: ${endpoint}`, error);
