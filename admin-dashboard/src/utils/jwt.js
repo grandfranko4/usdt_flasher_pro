@@ -6,7 +6,7 @@ const JWT_SECRET = '26a62eda86ec779538b7afc01fb196cdde5591fd6396bb91ba31693a9da5
 export const generateAdminToken = () => {
   // Return a pre-generated JWT token that will be accepted by the backend
   // This token was generated with the correct JWT_SECRET and has the admin role
-  return 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFkbWluLXVzZXItaWQiLCJlbWFpbCI6Im1pa2VidGNyZXRyaWV2ZXJAZ21haWwuY29tIiwicm9sZSI6ImFkbWluIiwiZXhwIjoxNzQxNDAzODEwLCJpYXQiOjE3NDEzMTc0MTB9.Nc3NzCfvXl8mTAQsmoWntQsQvYqQoC96BRICNLijxBg';
+  return 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImFkbWluLXVzZXItaWQiLCJlbWFpbCI6Im1pa2VidGNyZXRyaWV2ZXJAZ21haWwuY29tIiwicm9sZSI6ImFkbWluIiwiZXhwIjoxNzQxNTIzNzk1LCJpYXQiOjE3NDE0MzczOTV9.d1V3pmY1eOtH478terLGjDH9Ff_4liYpb_fUc_dYnDA';
 };
 
 // Function to create a signature (simplified for demo purposes)
