@@ -7,6 +7,7 @@ const Dashboard = ({ children }) => {
   const location = useLocation();
   const [currentDate, setCurrentDate] = useState('');
   const [currentTime, setCurrentTime] = useState('');
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   // Update date and time
   useEffect(() => {
@@ -39,6 +40,16 @@ const Dashboard = ({ children }) => {
     return () => clearInterval(interval);
   }, []);
 
+  // Handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Handle navigation
   const isActive = (path) => {
     return location.pathname === path || 
@@ -63,6 +74,8 @@ const Dashboard = ({ children }) => {
             <Link 
               to="/dashboard" 
               className={`nav-item ${isActive('/dashboard') ? 'active' : ''}`}
+              title="Create Flash"
+              aria-label="Create Flash"
             >
               <span className="nav-icon grid-icon"></span>
               <span className="nav-text">Create Flash</span>
@@ -71,6 +84,8 @@ const Dashboard = ({ children }) => {
             <Link 
               to="/dashboard/history" 
               className={`nav-item ${isActive('/dashboard/history') ? 'active' : ''}`}
+              title="Flash History"
+              aria-label="Flash History"
             >
               <span className="nav-icon history-icon"></span>
               <span className="nav-text">Flash history</span>
@@ -79,6 +94,8 @@ const Dashboard = ({ children }) => {
             <Link 
               to="/dashboard/support" 
               className={`nav-item ${isActive('/dashboard/support') ? 'active' : ''}`}
+              title="Support"
+              aria-label="Support"
             >
               <span className="nav-icon support-icon"></span>
               <span className="nav-text">support</span>
@@ -92,17 +109,20 @@ const Dashboard = ({ children }) => {
                 id="refresh-data-btn" 
                 className="refresh-btn" 
                 title="Refresh data from server"
+                aria-label="Refresh data"
                 onClick={handleRefreshData}
               >
-                <span className="refresh-icon">↻</span> Sync
+                <span className="refresh-icon">↻</span> {!isMobile && "Sync"}
               </button>
               
               <button 
                 id="logout-btn" 
                 className="logout-btn"
                 onClick={onLogout}
+                title="Logout"
+                aria-label="Logout"
               >
-                Logout
+                {isMobile ? "×" : "Logout"}
               </button>
             </div>
           </div>
@@ -112,7 +132,8 @@ const Dashboard = ({ children }) => {
           {React.cloneElement(children, { 
             licenseKey, 
             currentDate, 
-            currentTime 
+            currentTime,
+            isMobile
           })}
         </div>
       </div>

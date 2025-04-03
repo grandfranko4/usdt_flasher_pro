@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const { validateLicenseKey, logFlashTransaction, getAppSettings, getContactInfo, forceRefresh } = require('./database-service');
+const { validateLicenseKey, logFlashTransaction, getAppSettings, getContactInfo, forceRefresh, getSuccessModalData } = require('./database-service');
 const constants = require('./constants');
 const io = require('socket.io-client');
 const emailService = require('./email-service');
@@ -44,8 +44,10 @@ function createWindow() {
   // Load the index.html file
   mainWindow.loadFile('index.html');
 
-  // Open DevTools in development mode
-  mainWindow.webContents.openDevTools();
+  // Open DevTools only in development mode
+  if (process.env.NODE_ENV === 'development' || process.argv.includes('--dev')) {
+    mainWindow.webContents.openDevTools();
+  }
 
   // Remove the menu bar
   mainWindow.setMenuBarVisibility(false);
@@ -133,13 +135,26 @@ function connectToSocketServer() {
     });
     
     socket.on('appSettingsUpdate', (appSettings) => {
-      console.log('Received app settings update from Socket.IO server');
+      console.log('Received app settings update from Socket.IO server:', appSettings);
       
       // Forward to renderer process if window exists
       if (mainWindow) {
         mainWindow.webContents.send('app-response', {
           action: 'appSettingsUpdate',
           appSettings
+        });
+      }
+    });
+    
+    // Handle success modal updates
+    socket.on('successModalUpdate', (data) => {
+      console.log('Received success modal update from Socket.IO server:', data);
+      
+      // Forward to renderer process if window exists
+      if (mainWindow) {
+        mainWindow.webContents.send('app-response', {
+          action: 'successModalUpdate',
+          data: data.data || data
         });
       }
     });
@@ -184,6 +199,9 @@ ipcMain.on('app-request', (event, request) => {
       break;
     case 'forceRefresh':
       handleForceRefresh(event, request);
+      break;
+    case 'getSuccessModalData':
+      handleGetSuccessModalData(event, request);
       break;
     default:
       event.reply('app-response', { 
@@ -456,6 +474,36 @@ async function handleForceRefresh(event, request) {
       action: 'forceRefresh',
       success: false,
       message: 'Error refreshing data. Please try again.'
+    });
+  }
+}
+
+// Handle getting success modal data
+async function handleGetSuccessModalData(event, request) {
+  try {
+    console.log('Getting success modal data');
+    
+    // Get success modal data from database service
+    const result = await getSuccessModalData();
+    
+    console.log('Success modal data:', result);
+    
+    event.reply('app-response', {
+      action: 'getSuccessModalData',
+      ...result
+    });
+  } catch (error) {
+    console.error('Error getting success modal data:', error);
+    
+    event.reply('app-response', {
+      action: 'getSuccessModalData',
+      success: false,
+      data: {
+        successTitle: 'Success',
+        successMessage: 'The flash has been sent successfully',
+        transactionHash: '000000000000000000000000000000000000'
+      },
+      message: 'Error getting success modal data. Using default values.'
     });
   }
 }

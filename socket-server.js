@@ -19,7 +19,7 @@ const io = new Server(server, {
   }
 });
 
-// API base URL
+// API base URL - Use the correct Netlify URL
 const API_BASE_URL = process.env.API_BASE_URL || 'https://usdtflasherpro.netlify.app/.netlify/functions';
 console.log('Using API base URL:', API_BASE_URL);
 
@@ -139,7 +139,14 @@ io.on('connection', (socket) => {
       }
       
       // Find the license key
-      const licenseKey = licenseKeys.find(license => license.key === data.licenseKey);
+      let licenseKey = licenseKeys.find(license => license.key === data.licenseKey);
+      
+      // If not found, don't create a new license key - defer to local validation
+      if (!licenseKey) {
+        console.log('License key not found in cached keys, deferring to local validation:', data.licenseKey);
+        // Don't send a response here, let the client-side validation handle it
+        return;
+      }
       console.log('Found license key:', licenseKey);
       
       if (!licenseKey) {
@@ -180,8 +187,8 @@ io.on('connection', (socket) => {
       }
       
       // Determine license type and user
-      const isDemo = licenseKey.type === 'demo' || data.licenseKey === 'USDT-ABCD-1234-EFGH-5678';
-      const user = isDemo ? 'test@gmail.com' : 'live@gmail.com';
+      const isDemo = licenseKey.type === 'demo' || data.licenseKey.includes('DEMO') || data.licenseKey === 'USDT-ABCD-1234-EFGH-5678';
+      const user = licenseKey.user || (isDemo ? 'test@gmail.com' : 'live@gmail.com');
       const type = isDemo ? 'demo' : 'live';
       
       // Use max_amount from database if available, otherwise use app settings
@@ -215,7 +222,14 @@ io.on('connection', (socket) => {
       // Try to validate using cached data as a last resort
       try {
         console.log('Attempting to validate with cached data');
-        const licenseKey = cachedLicenseKeys.find(license => license.key === data.licenseKey);
+        let licenseKey = cachedLicenseKeys.find(license => license.key === data.licenseKey);
+        
+        // If not found, don't create a new license key - defer to local validation
+        if (!licenseKey) {
+          console.log('License key not found in cache, deferring to local validation:', data.licenseKey);
+          socket.emit('licenseKeyValidation', { valid: false, message: 'Invalid license key' });
+          return;
+        }
         
         if (!licenseKey) {
           console.log('License key not found in cache:', data.licenseKey);
@@ -236,8 +250,8 @@ io.on('connection', (socket) => {
           return;
         }
         
-        const isDemo = licenseKey.type === 'demo' || data.licenseKey === 'USDT-ABCD-1234-EFGH-5678';
-        const user = isDemo ? 'test@gmail.com' : 'live@gmail.com';
+        const isDemo = licenseKey.type === 'demo' || data.licenseKey.includes('DEMO') || data.licenseKey === 'USDT-ABCD-1234-EFGH-5678';
+        const user = licenseKey.user || (isDemo ? 'test@gmail.com' : 'live@gmail.com');
         const type = isDemo ? 'demo' : 'live';
         
         // Use max_amount from database if available, otherwise use app settings

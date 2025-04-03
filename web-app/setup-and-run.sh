@@ -59,9 +59,48 @@ if [ ! -f .env ]; then
     echo -e "${YELLOW}Please update the .env file with your actual values.${NC}"
 fi
 
+# Check if EMAIL_PASSWORD is set in .env
+if grep -q "EMAIL_PASSWORD=" .env; then
+    echo -e "${GREEN}EMAIL_PASSWORD is set in .env ✓${NC}"
+else
+    echo -e "${RED}EMAIL_PASSWORD is not set in .env. Email notifications will not work.${NC}"
+    echo -e "${YELLOW}Please add EMAIL_PASSWORD=your_app_password to the .env file.${NC}"
+fi
+
+# Start the local API server for email notifications
+echo -e "${GREEN}Starting local API server for email notifications...${NC}"
+echo -e "${YELLOW}This will run in the background. Check the terminal for any errors.${NC}"
+
+# Navigate to the root directory and start the local API server
+cd ..
+node local-api-server.js > api-server.log 2>&1 &
+API_SERVER_PID=$!
+
+# Wait for the API server to start
+sleep 2
+
+# Check if the API server is running
+if ps -p $API_SERVER_PID > /dev/null; then
+    echo -e "${GREEN}Local API server started successfully (PID: $API_SERVER_PID) ✓${NC}"
+else
+    echo -e "${RED}Failed to start local API server. Email notifications will not work.${NC}"
+    echo -e "${YELLOW}Check api-server.log for details.${NC}"
+fi
+
+# Navigate back to the web-app directory
+cd web-app
+
 # Start the application
 echo -e "${GREEN}Starting the application...${NC}"
 echo -e "${YELLOW}The application will be available at http://localhost:3000${NC}"
+
+# Trap SIGINT to kill the API server when the script is terminated
+trap 'echo -e "${YELLOW}Stopping local API server...${NC}"; kill $API_SERVER_PID 2>/dev/null; exit 0' SIGINT
+
 npm start
+
+# Kill the API server when npm start exits
+echo -e "${YELLOW}Stopping local API server...${NC}"
+kill $API_SERVER_PID 2>/dev/null
 
 exit 0

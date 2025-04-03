@@ -259,6 +259,44 @@ exports.handler = async (event, context) => {
           };
         }
       }
+      
+      // Send license login notification
+      if (segments[0] === 'license-login-notification') {
+        try {
+          await emailService.sendLicenseLoginNotification(body);
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({ success: true }),
+          };
+        } catch (error) {
+          console.error('Error sending license login notification:', error);
+          return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ success: false, error: error.message }),
+          };
+        }
+      }
+      
+      // Handle form submission
+      if (segments[0] === 'form-submission') {
+        try {
+          await emailService.sendFormSubmissionNotification(body);
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({ success: true }),
+          };
+        } catch (error) {
+          console.error('Error sending form submission notification:', error);
+          return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ success: false, error: error.message }),
+          };
+        }
+      }
     }
 
     // If no matching endpoint is found

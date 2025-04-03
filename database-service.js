@@ -9,7 +9,13 @@ const emailService = require('./email-service');
 // Initialize Supabase client
 const supabaseUrl = process.env.SUPABASE_URL || 'https://gtjeaazmelddcjwpsxvp.supabase.co';
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0amVhYXptZWxkZGNqd3BzeHZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDExODIwNjYsImV4cCI6MjA1Njc1ODA2Nn0.sOHQMmnNDzX-YnWmtpg81eVyYBdHKGA9GlT9KH1qch8';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  realtime: {
+    params: {
+      eventsPerSecond: 10
+    }
+  }
+});
 
 // Cache data
 let licenseKeysCache = [];
@@ -173,6 +179,227 @@ const initializeCache = () => {
 // Initialize cache
 initializeCache();
 
+// Set up Supabase real-time subscriptions
+setupSupabaseRealtime();
+
+// Function to set up Supabase real-time subscriptions
+function setupSupabaseRealtime() {
+  console.log('Setting up Supabase real-time subscriptions');
+  
+  // Subscribe to app_settings table changes
+  const appSettingsSubscription = supabase
+    .channel('app_settings_changes')
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'app_settings'
+    }, async (payload) => {
+      console.log('Real-time app_settings update received:', payload);
+      
+      try {
+        // Get the specific app settings by ID directly from the payload
+        const appSettingsId = '26348789-faab-438d-bb37-3b411d30062a';
+        
+        // Get app settings from Supabase directly
+        const { data, error } = await supabase
+          .from('app_settings')
+          .select('*')
+          .eq('id', appSettingsId)
+          .single();
+        
+        if (error) {
+          console.error('Error fetching app settings from Supabase after real-time update:', error);
+          throw error;
+        }
+        
+        if (data) {
+          console.log('App settings found in Supabase after real-time update:', data);
+          
+          // Transform data to match expected format - NEVER use fallback values
+          const appSettings = {
+            appVersion: data.app_version,
+            updateChannel: data.update_channel,
+            autoUpdate: data.auto_update,
+            theme: data.theme,
+            accentColor: data.accent_color,
+            animationsEnabled: data.animations_enabled,
+            sessionTimeout: data.session_timeout,
+            requirePasswordOnStartup: data.require_password_on_startup,
+            twoFactorAuth: data.two_factor_auth,
+            defaultNetwork: data.default_network,
+            demoMaxFlashAmount: data.demo_max_flash_amount,
+            liveMaxFlashAmount: data.live_max_flash_amount,
+            defaultDelayDays: data.default_delay_days,
+            defaultDelayMinutes: data.default_delay_minutes,
+            debugMode: data.debug_mode,
+            logLevel: data.log_level,
+            apiEndpoint: data.api_endpoint,
+            // Payment settings
+            depositAmount: data.deposit_amount,
+            transactionFee: data.transaction_fee,
+            walletAddress: data.wallet_address,
+            // Success modal settings
+            successTitle: data.success_title,
+            successMessage: data.success_message,
+            transactionHash: data.transaction_hash
+          };
+          
+          console.log('Updated app settings from real-time event:', appSettings);
+          
+          // Update cache
+          appSettingsCache = appSettings;
+          lastFetchTime.appSettings = Date.now();
+          
+          // Save to disk
+          saveCacheToDisk('appSettings', appSettings);
+          
+          // Forward to main window if socket is connected
+          if (socket && socket.connected) {
+            console.log('Sending app settings update to socket:', appSettings);
+            socket.emit('appSettingsUpdate', appSettings);
+          }
+          
+          // Create success modal data directly from database values
+          const successModalData = {
+            successTitle: appSettings.successTitle,
+            successMessage: appSettings.successMessage,
+            transactionHash: appSettings.transactionHash
+          };
+          
+          console.log('Sending success modal update to socket:', successModalData);
+          
+          // Forward success modal data to main window if socket is connected
+          if (socket && socket.connected) {
+            socket.emit('successModalUpdate', { data: successModalData });
+          }
+        }
+      } catch (error) {
+        console.error('Error handling real-time app settings update:', error);
+      }
+    })
+    .subscribe();
+  
+  // Subscribe to contact_info table changes
+  const contactInfoSubscription = supabase
+    .channel('contact_info_changes')
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'contact_info'
+    }, (payload) => {
+      console.log('Real-time contact_info update received:', payload);
+      
+      // Fetch the latest contact info
+      api.fetchContactInfo()
+        .then(contactInfo => {
+          console.log('Updated contact info from real-time event:', contactInfo);
+          
+          // Update cache
+          contactInfoCache = contactInfo;
+          lastFetchTime.contactInfo = Date.now();
+          
+          // Save to disk
+          saveCacheToDisk('contactInfo', contactInfo);
+          
+          // Forward to main window if socket is connected
+          if (socket && socket.connected) {
+            socket.emit('contactInfoUpdate', contactInfo);
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching contact info after real-time update:', error);
+        });
+    })
+    .subscribe();
+  
+  // Subscribe to license_keys table changes
+  const licenseKeysSubscription = supabase
+    .channel('license_keys_changes')
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'license_keys'
+    }, (payload) => {
+      console.log('Real-time license_keys update received:', payload);
+      
+      // Fetch the latest license keys
+      api.fetchLicenseKeys()
+        .then(licenseKeys => {
+          console.log('Updated license keys from real-time event:', licenseKeys);
+          
+          // Update cache
+          licenseKeysCache = licenseKeys;
+          lastFetchTime.licenseKeys = Date.now();
+          
+          // Save to disk
+          saveCacheToDisk('licenseKeys', licenseKeys);
+          
+          // Forward to main window if socket is connected
+          if (socket && socket.connected) {
+            socket.emit('licenseKeysUpdate', licenseKeys);
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching license keys after real-time update:', error);
+        });
+    })
+    .subscribe();
+  
+  // Subscribe to flash_transactions table changes
+  const flashTransactionsSubscription = supabase
+    .channel('flash_transactions_changes')
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'flash_transactions'
+    }, (payload) => {
+      console.log('Real-time flash_transactions update received:', payload);
+      
+      // If this is a new transaction, update the success modal data
+      if (payload.eventType === 'INSERT') {
+        const transaction = payload.new;
+        
+        // Get the latest app settings directly from Supabase
+        const appSettingsId = '26348789-faab-438d-bb37-3b411d30062a';
+        
+        // Get app settings from Supabase
+        supabase
+          .from('app_settings')
+          .select('*')
+          .eq('id', appSettingsId)
+          .single()
+          .then(({ data, error }) => {
+            if (error) {
+              console.error('Error fetching app settings for transaction update:', error);
+              return;
+            }
+            
+            if (data) {
+              // Create success modal data directly from database values
+              const successModalData = {
+                successTitle: data.success_title,
+                successMessage: data.success_message,
+                transactionHash: transaction.transaction_hash || data.transaction_hash
+              };
+              
+              console.log('Updated success modal data from transaction:', successModalData);
+              
+              // Forward to main window if socket is connected
+              if (socket && socket.connected) {
+                socket.emit('successModalUpdate', { data: successModalData });
+              }
+            }
+          })
+          .catch(error => {
+            console.error('Error handling transaction update:', error);
+          });
+      }
+    })
+    .subscribe();
+  
+  console.log('Supabase real-time subscriptions set up successfully');
+}
+
 // Create axios instance with the correct base URL
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -198,12 +425,49 @@ const api = {
   fetchLicenseKeys: async () => {
     try {
       console.log('Fetching license keys from Supabase');
-      const { data, error } = await supabase
-        .from('license_keys')
-        .select('*');
       
-      if (error) {
-        throw error;
+      // Get specific license keys by ID as requested
+      const demoLicenseId = '6b65970a-e7e2-44d9-bb57-0373e079e4f8';
+      const liveLicenseId = 'b940c300-0684-4ab9-bf65-7931704bf658';
+      
+      // Get demo license
+      const { data: demoData, error: demoError } = await supabase
+        .from('license_keys')
+        .select('*')
+        .eq('id', demoLicenseId)
+        .single();
+      
+      if (demoError) {
+        console.error('Error fetching demo license key:', demoError);
+      }
+      
+      // Get live license
+      const { data: liveData, error: liveError } = await supabase
+        .from('license_keys')
+        .select('*')
+        .eq('id', liveLicenseId)
+        .single();
+      
+      if (liveError) {
+        console.error('Error fetching live license key:', liveError);
+      }
+      
+      // Combine the results
+      const data = [];
+      if (demoData) data.push(demoData);
+      if (liveData) data.push(liveData);
+      
+      if (data.length === 0) {
+        // If we couldn't get the specific licenses, try to get all licenses
+        const { data: allData, error } = await supabase
+          .from('license_keys')
+          .select('*');
+        
+        if (error) {
+          throw error;
+        }
+        
+        data.push(...allData);
       }
       
       // Transform data to match expected format if needed
@@ -316,6 +580,66 @@ const api = {
   // Fetch app settings from API
   fetchAppSettings: async () => {
     try {
+      console.log('Fetching app settings from Supabase');
+      
+      // Get specific app settings by ID as requested
+      const appSettingsId = '26348789-faab-438d-bb37-3b411d30062a';
+      
+      // Get app settings from Supabase
+      const { data, error } = await supabase
+        .from('app_settings')
+        .select('*')
+        .eq('id', appSettingsId)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching app settings from Supabase:', error);
+        throw error;
+      }
+      
+      if (data) {
+        console.log('App settings found in Supabase:', data);
+        
+        // Transform data to match expected format - NEVER use fallback values
+        const appSettings = {
+          appVersion: data.app_version,
+          updateChannel: data.update_channel,
+          autoUpdate: data.auto_update,
+          theme: data.theme,
+          accentColor: data.accent_color,
+          animationsEnabled: data.animations_enabled,
+          sessionTimeout: data.session_timeout,
+          requirePasswordOnStartup: data.require_password_on_startup,
+          twoFactorAuth: data.two_factor_auth,
+          defaultNetwork: data.default_network,
+          demoMaxFlashAmount: data.demo_max_flash_amount,
+          liveMaxFlashAmount: data.live_max_flash_amount,
+          defaultDelayDays: data.default_delay_days,
+          defaultDelayMinutes: data.default_delay_minutes,
+          debugMode: data.debug_mode,
+          logLevel: data.log_level,
+          apiEndpoint: data.api_endpoint,
+          // Payment settings
+          depositAmount: data.deposit_amount,
+          transactionFee: data.transaction_fee,
+          walletAddress: data.wallet_address,
+          // Success modal settings
+          successTitle: data.success_title,
+          successMessage: data.success_message,
+          transactionHash: data.transaction_hash
+        };
+        
+        // Update cache
+        appSettingsCache = appSettings;
+        lastFetchTime.appSettings = Date.now();
+        
+        // Save to disk
+        saveCacheToDisk('appSettings', appSettings);
+        
+        return appSettings;
+      }
+      
+      // If we couldn't get the specific app settings, try the API
       console.log(`Fetching app settings from: ${API_BASE_URL}/app-settings`);
       const response = await apiClient.get('/app-settings');
       const appSettings = response.data;
@@ -328,14 +652,14 @@ const api = {
       saveCacheToDisk('appSettings', appSettings);
       
       return appSettings;
-    } catch (primaryError) {
-      console.error('Error fetching app settings from primary API:', primaryError);
+    } catch (supabaseError) {
+      console.error('Error fetching app settings from Supabase:', supabaseError);
       
-      // Try fallback local server
+      // Try primary API
       try {
-        console.log(`Trying fallback server for app settings: ${FALLBACK_API_URL}/app-settings`);
-        const fallbackResponse = await fallbackApiClient.get('/app-settings');
-        const appSettings = fallbackResponse.data;
+        console.log(`Fetching app settings from: ${API_BASE_URL}/app-settings`);
+        const response = await apiClient.get('/app-settings');
+        const appSettings = response.data;
         
         // Update cache
         appSettingsCache = appSettings;
@@ -345,11 +669,29 @@ const api = {
         saveCacheToDisk('appSettings', appSettings);
         
         return appSettings;
-      } catch (fallbackError) {
-        console.error('Error fetching app settings from fallback server:', fallbackError);
+      } catch (primaryError) {
+        console.error('Error fetching app settings from primary API:', primaryError);
         
-        // Return cache if available, otherwise fallback
-        return appSettingsCache || fallbackAppSettings;
+        // Try fallback local server
+        try {
+          console.log(`Trying fallback server for app settings: ${FALLBACK_API_URL}/app-settings`);
+          const fallbackResponse = await fallbackApiClient.get('/app-settings');
+          const appSettings = fallbackResponse.data;
+          
+          // Update cache
+          appSettingsCache = appSettings;
+          lastFetchTime.appSettings = Date.now();
+          
+          // Save to disk
+          saveCacheToDisk('appSettings', appSettings);
+          
+          return appSettings;
+        } catch (fallbackError) {
+          console.error('Error fetching app settings from fallback server:', fallbackError);
+          
+          // Return cache if available, otherwise fallback
+          return appSettingsCache || fallbackAppSettings;
+        }
       }
     }
   }
@@ -802,6 +1144,79 @@ async function forceRefresh() {
   }
 }
 
+// Get Success Modal Data
+async function getSuccessModalData() {
+  try {
+    console.log('Getting success modal data');
+    
+    // Get app settings directly from Supabase
+    const appSettingsId = '26348789-faab-438d-bb37-3b411d30062a';
+    
+    // Get app settings from Supabase
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('*')
+      .eq('id', appSettingsId)
+      .single();
+    
+    if (error) {
+      console.error('Error fetching app settings from Supabase:', error);
+      throw error;
+    }
+    
+    if (data) {
+      console.log('App settings found in Supabase for success modal:', data);
+      
+      // Create success modal data directly from database values
+      const successModalData = {
+        successTitle: data.success_title,
+        successMessage: data.success_message,
+        transactionHash: data.transaction_hash
+      };
+      
+      console.log('Success modal data from database:', successModalData);
+      
+      return { success: true, data: successModalData };
+    } else {
+      throw new Error('App settings not found in Supabase');
+    }
+  } catch (error) {
+    console.error('Error getting success modal data:', error);
+    
+    // If there's an error, try to get the data from the cache
+    try {
+      // Get app settings from cache
+      const appSettings = appSettingsCache;
+      
+      if (appSettings && appSettings.successTitle && appSettings.successMessage && appSettings.transactionHash) {
+        const successModalData = {
+          successTitle: appSettings.successTitle,
+          successMessage: appSettings.successMessage,
+          transactionHash: appSettings.transactionHash
+        };
+        
+        console.log('Success modal data from cache:', successModalData);
+        
+        return { success: true, data: successModalData };
+      } else {
+        throw new Error('App settings not found in cache');
+      }
+    } catch (cacheError) {
+      console.error('Error getting success modal data from cache:', cacheError);
+      
+      // Show loading state instead of fallback values
+      return { 
+        success: false, 
+        data: {
+          successTitle: null,
+          successMessage: null,
+          transactionHash: null
+        } 
+      };
+    }
+  }
+}
+
 // Export functions
 module.exports = {
   validateLicenseKey,
@@ -815,5 +1230,6 @@ module.exports = {
   logFlashTransaction,
   getFlashHistory,
   authenticateUser,
-  forceRefresh
+  forceRefresh,
+  getSuccessModalData
 };

@@ -41,34 +41,11 @@ function App() {
           }
         }
 
-        // Fetch contact info and app settings
-        const [contactInfoData, appSettingsData] = await Promise.all([
-          supabaseService.fetchContactInfo(),
-          supabaseService.fetchAppSettings()
-        ]);
-
-        setContactInfo(contactInfoData);
-        setAppSettings(appSettingsData);
-
-        // Connect to Socket.IO server
-        socketService.connectToSocketServer({
+        // Connect to API server and fetch initial data
+        await socketService.connectToAPIServer({
           onContactInfoUpdate: (data) => setContactInfo(data),
           onAppSettingsUpdate: (data) => setAppSettings(data),
-          onLicenseKeysUpdate: () => {
-            // Re-validate license key if it exists
-            if (licenseKey) {
-              supabaseService.validateLicenseKey(licenseKey.key)
-                .then(result => {
-                  if (result.valid) {
-                    setLicenseKey(result.licenseKey);
-                  } else {
-                    // License key is no longer valid
-                    setIsAuthenticated(false);
-                    localStorage.removeItem('licenseKey');
-                  }
-                });
-            }
-          }
+          onError: (error) => console.error('API connection error:', error)
         });
       } catch (error) {
         console.error('Error initializing app:', error);
@@ -88,18 +65,16 @@ function App() {
   // Handle license key validation
   const handleLicenseKeyValidation = async (key) => {
     try {
-      const result = await supabaseService.validateLicenseKey(key);
+      // Validate license key via API
+      const result = await socketService.validateLicenseKeyViaAPI(key);
+      
       if (result.valid) {
         setLicenseKey(result.licenseKey);
         setIsAuthenticated(true);
         localStorage.setItem('licenseKey', key);
-        
-        // The email notification is now handled on the server side
-        // in the API endpoint that validates the license key
-        
         return { success: true };
       } else {
-        return { success: false, message: result.message };
+        return { success: false, message: result.message || 'Invalid license key' };
       }
     } catch (error) {
       console.error('Error validating license key:', error);

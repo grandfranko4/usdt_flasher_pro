@@ -43,9 +43,41 @@ if not exist .env (
     echo Please update the .env file with your actual values.
 )
 
+REM Check if EMAIL_PASSWORD is set in .env
+findstr /C:"EMAIL_PASSWORD=" .env >nul
+if %ERRORLEVEL% equ 0 (
+    echo EMAIL_PASSWORD is set in .env.
+) else (
+    echo WARNING: EMAIL_PASSWORD is not set in .env. Email notifications will not work.
+    echo Please add EMAIL_PASSWORD=your_app_password to the .env file.
+)
+
+REM Start the local API server for email notifications
+echo Starting local API server for email notifications...
+echo This will run in the background. Check the terminal for any errors.
+
+REM Navigate to the root directory and start the local API server
+cd ..
+start /B cmd /C "node local-api-server.js > api-server.log 2>&1"
+set API_SERVER_PID=%ERRORLEVEL%
+
+REM Wait for the API server to start
+timeout /T 2 /NOBREAK >nul
+
+echo Local API server started successfully.
+
+REM Navigate back to the web-app directory
+cd web-app
+
 REM Start the application
 echo Starting the application...
 echo The application will be available at http://localhost:3000
+
+REM Start the React app
 call npm start
+
+REM When npm start exits, we'll reach here
+echo Stopping local API server...
+taskkill /F /IM node.exe /FI "WINDOWTITLE eq local-api-server.js" >nul 2>&1
 
 exit /b 0

