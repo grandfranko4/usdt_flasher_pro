@@ -4,6 +4,7 @@ const { createClient } = require('@supabase/supabase-js');
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
+// Log environment variables (safely)
 console.log('Supabase environment variables:', {
   hasUrl: !!supabaseUrl,
   hasKey: !!supabaseAnonKey,
@@ -19,12 +20,20 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing required Supabase environment variables');
 }
 
-console.log('Initializing Supabase client with URL:', supabaseUrl);
+// Initialize Supabase client with additional options
 const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: false, // Don't persist session in Netlify functions
     autoRefreshToken: true,
     detectSessionInUrl: false
+  },
+  db: {
+    schema: 'public'
+  },
+  global: {
+    headers: {
+      'x-application-name': 'usdt-flasher-pro'
+    }
   }
 });
 
