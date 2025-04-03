@@ -1,8 +1,16 @@
 const { createClient } = require('@supabase/supabase-js');
 
 // Initialize the Supabase client with the URL and API key
-const supabaseUrl = process.env.SUPABASE_URL || 'https://gtjeaazmelddcjwpsxvp.supabase.co';
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0amVhYXptZWxkZGNqd3BzeHZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDExODIwNjYsImV4cCI6MjA1Njc1ODA2Nn0.sOHQMmnNDzX-YnWmtpg81eVyYBdHKGA9GlT9KH1qch8';
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('Missing Supabase environment variables:', {
+    hasUrl: !!supabaseUrl,
+    hasKey: !!supabaseAnonKey
+  });
+  throw new Error('Missing required Supabase environment variables');
+}
 
 console.log('Initializing Supabase client with URL:', supabaseUrl);
 const supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -60,17 +68,31 @@ async function create(table, data) {
 /**
  * Get all documents from a table
  * @param {string} table - Table name
+ * @param {object} query - Optional query parameters
  * @returns {Array} Array of documents
  */
-async function getAll(table) {
+async function getAll(table, query = {}) {
   try {
-    const { data, error } = await supabase
-      .from(table)
-      .select('*');
+    console.log(`Getting all documents from ${table} with query:`, query);
     
-    if (error) throw error;
+    let request = supabase.from(table).select('*');
     
-    return data;
+    // Apply query filters if provided
+    if (query) {
+      Object.entries(query).forEach(([key, value]) => {
+        request = request.eq(key, value);
+      });
+    }
+    
+    const { data, error } = await request;
+    
+    if (error) {
+      console.error(`Supabase error getting all documents from ${table}:`, error);
+      throw error;
+    }
+    
+    console.log(`Successfully retrieved ${data?.length || 0} documents from ${table}`);
+    return data || [];
   } catch (error) {
     console.error(`Error getting all documents from ${table}:`, error);
     throw error;
@@ -85,14 +107,20 @@ async function getAll(table) {
  */
 async function getById(table, id) {
   try {
+    console.log(`Getting document ${id} from ${table}`);
+    
     const { data, error } = await supabase
       .from(table)
       .select('*')
       .eq('id', id)
       .single();
     
-    if (error) throw error;
+    if (error) {
+      console.error(`Supabase error getting document ${id} from ${table}:`, error);
+      throw error;
+    }
     
+    console.log(`Successfully retrieved document ${id} from ${table}`);
     return data;
   } catch (error) {
     console.error(`Error getting document ${id} from ${table}:`, error);

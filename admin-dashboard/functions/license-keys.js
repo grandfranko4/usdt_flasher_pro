@@ -5,6 +5,11 @@ const axios = require('axios');
 // Get JWT secret from environment variables
 const JWT_SECRET = process.env.JWT_SECRET;
 
+if (!JWT_SECRET) {
+  console.error('Missing JWT_SECRET environment variable');
+  throw new Error('Missing JWT_SECRET environment variable');
+}
+
 // Helper function to verify JWT token
 const verifyToken = (authHeader) => {
   if (!authHeader) {
@@ -17,7 +22,10 @@ const verifyToken = (authHeader) => {
   }
 
   try {
-    return jwt.verify(token, JWT_SECRET);
+    console.log('Verifying token...');
+    const decoded = jwt.verify(token, JWT_SECRET);
+    console.log('Token verified successfully:', { userId: decoded.sub });
+    return decoded;
   } catch (error) {
     console.error('Token verification error:', error);
     throw new Error('Invalid token');
@@ -25,6 +33,12 @@ const verifyToken = (authHeader) => {
 };
 
 exports.handler = async (event, context) => {
+  console.log('License keys function called with event:', {
+    method: event.httpMethod,
+    path: event.path,
+    headers: event.headers
+  });
+
   // Set CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -55,6 +69,7 @@ exports.handler = async (event, context) => {
           const id = event.path.split('/').pop();
           
           if (id && id !== 'license-keys') {
+            console.log(`Getting license key with ID: ${id}`);
             const licenseKey = await getById('license_keys', id);
             return {
               statusCode: 200,
@@ -62,6 +77,7 @@ exports.handler = async (event, context) => {
               body: JSON.stringify(licenseKey)
             };
           } else {
+            console.log('Getting all license keys');
             const licenseKeys = await getAll('license_keys');
             return {
               statusCode: 200,
