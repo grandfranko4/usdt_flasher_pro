@@ -2,7 +2,7 @@ const { getAll, getById } = require('./utils/supabase');
 const jwt = require('jsonwebtoken');
 
 // Get JWT secret from environment variables
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = 'ZTpSvcoYIjPq5CruYmeO8oaWJn3lMMCV35kNmQaiWi7Ksf2/YAjfmTHricptbxHEj2CKkBu2P4Y/vCt7XThXVw==';
 
 if (!JWT_SECRET) {
   console.error('Missing JWT_SECRET environment variable');
