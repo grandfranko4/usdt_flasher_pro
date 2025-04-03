@@ -2,9 +2,8 @@ const { getAll, getById, create, update, remove } = require('./utils/supabase');
 const jwt = require('jsonwebtoken');
 const axios = require('axios');
 
-// Get JWT secret and socket server URL from environment variables
-const JWT_SECRET = process.env.JWT_SECRET || '26a62eda86ec779538b7afc01fb196cdde5591fd6396bb91ba31693a9da50a58';
-const SOCKET_SERVER_URL = process.env.SOCKET_SERVER_URL || 'http://localhost:3030';
+// Get JWT secret from environment variables
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Helper function to verify JWT token
 const verifyToken = (authHeader) => {
@@ -18,7 +17,6 @@ const verifyToken = (authHeader) => {
   }
 
   try {
-    console.log('Verifying token with secret:', JWT_SECRET.substring(0, 10) + '...');
     return jwt.verify(token, JWT_SECRET);
   } catch (error) {
     console.error('Token verification error:', error);
@@ -31,7 +29,8 @@ exports.handler = async (event, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Content-Type': 'application/json'
   };
 
   // Handle preflight OPTIONS request
@@ -45,25 +44,8 @@ exports.handler = async (event, context) => {
 
   try {
     // Verify token
-    try {
-      const user = verifyToken(event.headers.authorization);
-      
-      // Check if user has admin role
-      if (user.role !== 'admin') {
-        return {
-          statusCode: 403,
-          headers,
-          body: JSON.stringify({ error: 'Forbidden' })
-        };
-      }
-    } catch (error) {
-      return {
-        statusCode: 401,
-        headers,
-        body: JSON.stringify({ error: error.message })
-      };
-    }
-
+    const user = verifyToken(event.headers.authorization);
+    
     // Handle different HTTP methods
     switch (event.httpMethod) {
       case 'GET': {
