@@ -10,8 +10,12 @@ if (!JWT_SECRET) {
   throw new Error('Missing JWT_SECRET environment variable');
 }
 
+console.log('JWT_SECRET is set:', JWT_SECRET.substring(0, 5) + '...');
+
 // Helper function to verify JWT token
 const verifyToken = (authHeader) => {
+  console.log('Verifying token with auth header:', authHeader ? 'Present' : 'Missing');
+  
   if (!authHeader) {
     throw new Error('No authorization header provided');
   }
@@ -36,7 +40,10 @@ exports.handler = async (event, context) => {
   console.log('License keys function called with event:', {
     method: event.httpMethod,
     path: event.path,
-    headers: event.headers
+    headers: {
+      ...event.headers,
+      authorization: event.headers.authorization ? 'Bearer [REDACTED]' : undefined
+    }
   });
 
   // Set CORS headers
@@ -79,6 +86,7 @@ exports.handler = async (event, context) => {
           } else {
             console.log('Getting all license keys');
             const licenseKeys = await getAll('license_keys');
+            console.log(`Retrieved ${licenseKeys.length} license keys`);
             return {
               statusCode: 200,
               headers,

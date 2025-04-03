@@ -4,6 +4,13 @@ const { createClient } = require('@supabase/supabase-js');
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
+console.log('Supabase environment variables:', {
+  hasUrl: !!supabaseUrl,
+  hasKey: !!supabaseAnonKey,
+  url: supabaseUrl ? supabaseUrl.substring(0, 10) + '...' : 'missing',
+  keyLength: supabaseAnonKey ? supabaseAnonKey.length : 0
+});
+
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Missing Supabase environment variables:', {
     hasUrl: !!supabaseUrl,
@@ -19,6 +26,30 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     detectSessionInUrl: false
   }
+});
+
+// Test the Supabase connection
+async function testConnection() {
+  try {
+    console.log('Testing Supabase connection...');
+    const { data, error } = await supabase.from('license_keys').select('count').limit(1);
+    
+    if (error) {
+      console.error('Supabase connection test failed:', error);
+      return false;
+    }
+    
+    console.log('Supabase connection test successful');
+    return true;
+  } catch (error) {
+    console.error('Error testing Supabase connection:', error);
+    return false;
+  }
+}
+
+// Run the connection test
+testConnection().then(connected => {
+  console.log('Supabase connection status:', connected ? 'Connected' : 'Failed to connect');
 });
 
 /**
@@ -84,6 +115,7 @@ async function getAll(table, query = {}) {
       });
     }
     
+    console.log(`Executing Supabase query for ${table}...`);
     const { data, error } = await request;
     
     if (error) {
