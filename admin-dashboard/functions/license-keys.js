@@ -45,26 +45,36 @@ exports.handler = async (event, context) => {
   try {
     // Verify token
     const user = verifyToken(event.headers.authorization);
+    console.log('Authenticated user:', user);
     
     // Handle different HTTP methods
     switch (event.httpMethod) {
       case 'GET': {
-        // Get all license keys or a specific one
-        const id = event.path.split('/').pop();
-        
-        if (id && id !== 'license-keys') {
-          const licenseKey = await getById('license_keys', id);
+        try {
+          // Get all license keys or a specific one
+          const id = event.path.split('/').pop();
+          
+          if (id && id !== 'license-keys') {
+            const licenseKey = await getById('license_keys', id);
+            return {
+              statusCode: 200,
+              headers,
+              body: JSON.stringify(licenseKey)
+            };
+          } else {
+            const licenseKeys = await getAll('license_keys');
+            return {
+              statusCode: 200,
+              headers,
+              body: JSON.stringify(licenseKeys)
+            };
+          }
+        } catch (error) {
+          console.error('Error fetching license keys:', error);
           return {
-            statusCode: 200,
+            statusCode: 500,
             headers,
-            body: JSON.stringify(licenseKey)
-          };
-        } else {
-          const licenseKeys = await getAll('license_keys');
-          return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify(licenseKeys)
+            body: JSON.stringify({ error: 'Error fetching license keys: ' + error.message })
           };
         }
       }

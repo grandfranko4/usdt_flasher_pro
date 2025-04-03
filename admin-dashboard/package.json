@@ -33,7 +33,8 @@
     "create-admin": "node --experimental-modules --es-module-specifier-resolution=node src/scripts/createAdminUser.js",
     "init-db": "node --experimental-modules --es-module-specifier-resolution=node src/scripts/initializeDatabase.js",
     "deploy": "node scripts/deploy-to-netlify.js",
-    "deploy-supabase": "node scripts/deploy-to-netlify-supabase.js"
+    "deploy-supabase": "node scripts/deploy-to-netlify-supabase.js",
+    "setup-netlify": "node scripts/setup-netlify-env.js"
   },
   "eslintConfig": {
     "extends": [

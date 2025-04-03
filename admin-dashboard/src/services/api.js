@@ -42,12 +42,23 @@ const apiRequest = async (endpoint, options = {}) => {
     const response = await fetch(apiUrl, config);
     console.log(`API response status: ${response.status}`);
     
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      throw new Error(errorData?.error || `API request failed with status ${response.status}`);
+    // Get the response text first
+    const responseText = await response.text();
+    console.log('Response text:', responseText);
+    
+    // Try to parse as JSON if it looks like JSON
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      console.warn('Failed to parse response as JSON:', e);
+      throw new Error(`Invalid JSON response: ${responseText}`);
     }
     
-    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || `API request failed with status ${response.status}`);
+    }
+    
     return data;
   } catch (error) {
     console.error(`API request error: ${endpoint}`, error);
